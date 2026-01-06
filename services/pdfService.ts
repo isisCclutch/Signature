@@ -1,8 +1,6 @@
 
 /**
  * We use pdf-lib to manipulate PDFs entirely in the browser.
- * Note: In a real-world scenario, you'd install 'pdf-lib' via npm.
- * Here we load it from a CDN to ensure it works in this environment.
  */
 
 const PDF_LIB_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
@@ -24,40 +22,41 @@ export async function processContract(
   signatureBase64: string,
   template: any // ContractTemplate
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, degrees } = await loadPdfLib() as any;
+  const { PDFDocument, rgb } = await loadPdfLib() as any;
 
   // Load existing PDF
   const existingPdfBytes = await pdfFile.arrayBuffer();
   const pdfDoc = await PDFDocument.load(existingPdfBytes);
   const pages = pdfDoc.getPages();
 
-  // 1. Add Employee Signature
-  if (signatureBase64) {
+  // 1. Add Employee Signatures
+  if (signatureBase64 && template.employeeSignatures) {
     const sigImage = await pdfDoc.embedPng(signatureBase64);
-    const { x, y, width, height, page } = template.employeeSignaturePos;
-    const targetPage = pages[page - 1] || pages[0];
-    
-    targetPage.drawImage(sigImage, {
-      x: x,
-      y: y,
-      width: width,
-      height: height,
-    });
+    for (const pos of template.employeeSignatures) {
+      const targetPage = pages[pos.page - 1] || pages[0];
+      targetPage.drawImage(sigImage, {
+        x: pos.x,
+        y: pos.y,
+        width: pos.width,
+        height: pos.height,
+      });
+    }
   }
 
-  // 2. Add Client Highlight
-  const { x, y, width, height, page } = template.clientHighlightPos;
-  const targetPage = pages[page - 1] || pages[0];
-  
-  // Create a semi-transparent yellow highlight
-  targetPage.drawRectangle({
-    x: x,
-    y: y,
-    width: width,
-    height: height,
-    color: rgb(1, 1, 0), // Yellow
-    opacity: 0.3,
-  });
+  // 2. Add Client Highlights
+  if (template.clientHighlights) {
+    for (const pos of template.clientHighlights) {
+      const targetPage = pages[pos.page - 1] || pages[0];
+      targetPage.drawRectangle({
+        x: pos.x,
+        y: pos.y,
+        width: pos.width,
+        height: pos.height,
+        color: rgb(1, 1, 0), // Yellow
+        opacity: 0.3,
+      });
+    }
+  }
 
   return await pdfDoc.save();
 }
