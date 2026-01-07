@@ -15,12 +15,15 @@ import {
   X,
   Save,
   Move,
-  GripVertical,
   ChevronRight,
   History,
   Clock,
   Type,
-  MousePointer2
+  MousePointer2,
+  CloudDownload,
+  Link,
+  UserCheck,
+  Edit3
 } from 'lucide-react';
 import { ViewMode, ContractTemplate, Coordinate, ProcessedDocument, TextZone } from './types';
 import { processContract } from './services/pdfService';
@@ -31,28 +34,226 @@ const PREVIEW_SCALE = 0.5;
 
 const INITIAL_TEMPLATES: ContractTemplate[] = [
   {
-    id: '1',
-    companyName: 'Global Corp Inc.',
-    description: 'Standard HR Recruitment Agreement',
-    employeeSignatures: [{ x: 50, y: 50, width: 120, height: 40, page: 1 }],
-    clientHighlights: [{ x: 350, y: 50, width: 200, height: 60, page: 1 }],
-    printNameZones: [{ x: 50, y: 35, width: 120, height: 15, page: 1, fontSize: 10 }],
+    id: 'rbc-preset',
+    companyName: 'RBC',
+    description: 'Royal Bank of Canada Standard Layout',
+    employeeSignatures: [
+      { x: 358, y: 420, width: 120, height: 40, page: 13 },
+      { x: 108, y: 300, width: 120, height: 40, page: 14 }
+    ],
+    clientHighlights: [
+      { x: 116, y: 200, width: 120, height: 40, page: 3 },
+      { x: 338, y: 200, width: 120, height: 40, page: 3 },
+      { x: 75, y: 350, width: 120, height: 40, page: 13 },
+      { x: 75, y: 420, width: 120, height: 40, page: 13 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'bns-preset',
+    companyName: 'BNS',
+    description: 'Bank of Nova Scotia Standard Layout',
+    employeeSignatures: [
+      { x: 396, y: 100, width: 120, height: 40, page: 4 }
+    ],
+    clientHighlights: [
+      { x: 210, y: 565, width: 120, height: 40, page: 5 },
+      { x: 50, y: 565, width: 120, height: 40, page: 5 },
+      { x: 298, y: 720, width: 120, height: 40, page: 9 },
+      { x: 154, y: 720, width: 120, height: 40, page: 9 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'td-preset',
+    companyName: 'TD',
+    description: 'TD Bank Standard Layout',
+    employeeSignatures: [
+      { x: 90, y: 50, width: 120, height: 40, page: 6 }
+    ],
+    clientHighlights: [
+      { x: 324, y: 290, width: 120, height: 40, page: 6 },
+      { x: 200, y: 290, width: 120, height: 40, page: 6 },
+      { x: 200, y: 330, width: 120, height: 40, page: 10 },
+      { x: 420, y: 330, width: 120, height: 40, page: 10 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'sda-preset',
+    companyName: 'SDA',
+    description: 'SDA Standard Layout',
+    employeeSignatures: [],
+    clientHighlights: [
+      { x: 200, y: 720, width: 120, height: 40, page: 3 },
+      { x: 352, y: 720, width: 120, height: 40, page: 3 },
+      { x: 60, y: 660, width: 120, height: 40, page: 8 },
+      { x: 230, y: 660, width: 120, height: 40, page: 8 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'gb-preset',
+    companyName: 'GB',
+    description: 'Global Business Standard Layout',
+    employeeSignatures: [
+      { x: 234, y: 160, width: 120, height: 40, page: 1 },
+      { x: 74, y: 180, width: 120, height: 40, page: 11 },
+      { x: 72, y: 110, width: 120, height: 40, page: 12 }
+    ],
+    clientHighlights: [
+      { x: 102, y: 570, width: 120, height: 40, page: 11 },
+      { x: 382, y: 570, width: 120, height: 40, page: 11 },
+      { x: 70, y: 120, width: 120, height: 40, page: 14 },
+      { x: 252, y: 120, width: 120, height: 40, page: 14 }
+    ],
+    printNameZones: [
+      { x: 202, y: 150, width: 120, height: 15, page: 1, fontSize: 15 },
+      { x: 388, y: 190, width: 120, height: 15, page: 11, fontSize: 15 },
+      { x: 376, y: 121, width: 120, height: 15, page: 12, fontSize: 15 }
+    ],
+    createdAt: Date.now()
+  },
+  {
+    id: 'cibc-preset',
+    companyName: 'CIBC',
+    description: 'CIBC Standard Layout',
+    employeeSignatures: [
+      { x: 359, y: 660, width: 120, height: 40, page: 9 },
+      { x: 371, y: 330, width: 120, height: 40, page: 10 }
+    ],
+    clientHighlights: [
+      { x: 91, y: 610, width: 120, height: 40, page: 9 },
+      { x: 357, y: 610, width: 120, height: 40, page: 9 },
+      { x: 100, y: 260, width: 120, height: 40, page: 12 },
+      { x: 359, y: 260, width: 120, height: 40, page: 12 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'bnc-preset',
+    companyName: 'BNC',
+    description: 'BNC Standard Layout',
+    employeeSignatures: [
+      { x: 60, y: 590, width: 120, height: 40, page: 13 },
+      { x: 83, y: 270, width: 120, height: 40, page: 14 },
+      { x: 87, y: 300, width: 120, height: 40, page: 17 }
+    ],
+    clientHighlights: [
+      { x: 200, y: 470, width: 120, height: 40, page: 13 },
+      { x: 200, y: 360, width: 120, height: 40, page: 13 },
+      { x: 520, y: 694, width: 50, height: 20, page: 15 },
+      { x: 520, y: 670, width: 50, height: 20, page: 15 },
+      { x: 85, y: 410, width: 120, height: 40, page: 17 },
+      { x: 85, y: 462, width: 120, height: 40, page: 17 }
+    ],
+    printNameZones: [
+      { x: 243, y: 300, width: 120, height: 40, page: 17, fontSize: 15 }
+    ],
+    createdAt: Date.now()
+  },
+  {
+    id: 'eden-park-preset',
+    companyName: 'Eden Park',
+    description: 'Eden Park Standard Layout',
+    employeeSignatures: [
+      { x: 65, y: 360, width: 120, height: 40, page: 9 },
+      { x: 65, y: 100, width: 120, height: 40, page: 9 }
+    ],
+    clientHighlights: [
+      { x: 40, y: 450, width: 120, height: 40, page: 9 },
+      { x: 35, y: 350, width: 120, height: 40, page: 9 },
+      { x: 190, y: 350, width: 120, height: 40, page: 8 },
+      { x: 190, y: 350, width: 120, height: 40, page: 8 },
+      { x: 45, y: 320, width: 120, height: 40, page: 11 },
+      { x: 35, y: 360, width: 120, height: 40, page: 11 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'autocapital-preset',
+    companyName: 'AutoCapital',
+    description: 'AutoCapital Standard Layout',
+    employeeSignatures: [],
+    clientHighlights: [
+      { x: 50, y: 530, width: 120, height: 40, page: 3 },
+      { x: 330, y: 530, width: 120, height: 40, page: 3 },
+      { x: 55, y: 320, width: 120, height: 40, page: 10 },
+      { x: 55, y: 270, width: 120, height: 40, page: 10 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'ia-preset',
+    companyName: 'iA',
+    description: 'iA Standard Layout',
+    employeeSignatures: [
+      { x: 60, y: 180, width: 120, height: 40, page: 5 }
+    ],
+    clientHighlights: [
+      { x: 56, y: 540, width: 150, height: 30, page: 5 },
+      { x: 334, y: 540, width: 150, height: 30, page: 5 },
+      { x: 35, y: 80, width: 150, height: 30, page: 6 },
+      { x: 35, y: 60, width: 150, height: 30, page: 6 }
+    ],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'north-lake-preset',
+    companyName: 'North Lake',
+    description: 'North Lake Standard Layout',
+    employeeSignatures: [
+      { x: 114, y: 150, width: 120, height: 40, page: 1 },
+      { x: 116, y: 190, width: 120, height: 40, page: 6 }
+    ],
+    clientHighlights: [],
+    printNameZones: [],
+    createdAt: Date.now()
+  },
+  {
+    id: 'santander-preset',
+    companyName: 'Santander',
+    description: 'Santander Standard Layout',
+    employeeSignatures: [
+      { x: 320, y: 145, width: 100, height: 30, page: 11 }
+    ],
+    clientHighlights: [
+      { x: 140, y: 170, width: 120, height: 35, page: 6 },
+      { x: 276, y: 170, width: 120, height: 35, page: 6 },
+      { x: 140, y: 60, width: 120, height: 35, page: 7 },
+      { x: 276, y: 60, width: 120, height: 35, page: 7 },
+      { x: 130, y: 430, width: 120, height: 35, page: 8 },
+      { x: 270, y: 430, width: 120, height: 35, page: 8 },
+      { x: 60, y: 260, width: 120, height: 35, page: 8 },
+      { x: 235, y: 260, width: 120, height: 35, page: 8 },
+      { x: 70, y: 150, width: 120, height: 35, page: 9 },
+      { x: 230, y: 150, width: 120, height: 35, page: 9 },
+      { x: 160, y: 400, width: 120, height: 35, page: 11 },
+      { x: 160, y: 250, width: 120, height: 35, page: 11 }
+    ],
+    printNameZones: [
+      { x: 320, y: 135, width: 100, height: 30, page: 11, fontSize: 15 }
+    ],
     createdAt: Date.now()
   }
 ];
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewMode>(ViewMode.DASHBOARD);
   const [templates, setTemplates] = useState<ContractTemplate[]>(() => {
     const saved = localStorage.getItem('contract_templates');
     if (saved) {
       const parsed = JSON.parse(saved);
-      return parsed.map((t: any) => ({
-        ...t,
-        printNameZones: t.printNameZones || [],
-        employeeSignatures: t.employeeSignatures || [],
-        clientHighlights: t.clientHighlights || []
-      }));
+      const existingIds = new Set(parsed.map((t: any) => t.id));
+      const missingInitial = INITIAL_TEMPLATES.filter(t => !existingIds.has(t.id));
+      return [...parsed, ...missingInitial];
     }
     return INITIAL_TEMPLATES;
   });
@@ -76,6 +277,10 @@ const App: React.FC = () => {
   const [processedPdfUrl, setProcessedPdfUrl] = useState<string | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
   const [isNewTemplate, setIsNewTemplate] = useState(false);
+  
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/15lNxwzZVhZxd_OO-4gY4a4yNkGOTVPWZpAB4naAyiFM/edit?usp=sharing');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('contract_templates', JSON.stringify(templates));
@@ -124,6 +329,42 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSyncFromSheets = async () => {
+    setIsSyncing(true);
+    try {
+      const sheetIdMatch = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (!sheetIdMatch) throw new Error("Invalid Google Sheets URL");
+      const sheetId = sheetIdMatch[1];
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+      
+      const response = await fetch(csvUrl);
+      if (!response.ok) throw new Error("Failed to fetch sheet data.");
+      
+      const csvText = await response.text();
+      const rows = csvText.split('\n').map(row => row.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
+      
+      const newTemplates: ContractTemplate[] = rows.slice(1)
+        .filter(row => row[0])
+        .map((row, index) => ({
+          id: `sheet-${index}-${Date.now()}`,
+          companyName: row[0] || 'Imported Template',
+          description: row[1] || 'Imported from Google Sheets',
+          employeeSignatures: row[2] ? [{ x: parseInt(row[2]), y: parseInt(row[3]), width: parseInt(row[4]), height: parseInt(row[5]), page: parseInt(row[6]) }] : [],
+          clientHighlights: row[7] ? [{ x: parseInt(row[7]), y: parseInt(row[8]), width: parseInt(row[9]), height: parseInt(row[10]), page: parseInt(row[11]) }] : [],
+          printNameZones: row[12] ? [{ x: parseInt(row[12]), y: parseInt(row[13]), width: 150, height: 15, fontSize: parseInt(row[14]) || 10, page: parseInt(row[15]) || 1 }] : [],
+          createdAt: Date.now()
+        }));
+
+      setTemplates(prev => [...prev, ...newTemplates]);
+      alert(`Imported ${newTemplates.length} templates!`);
+      setShowSyncModal(false);
+    } catch (error: any) {
+      alert(`Sync Failed: ${error.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -134,17 +375,15 @@ const App: React.FC = () => {
   };
 
   const startNewTemplate = () => {
-    const newTemp: ContractTemplate = {
-      id: Math.random().toString(36).substr(2, 9),
+    setEditingTemplate({
+      id: `custom-${Math.random().toString(36).substr(2, 9)}`,
       companyName: '',
-      description: 'Custom contract placement preset',
+      description: 'Custom Layout',
       employeeSignatures: [],
       clientHighlights: [],
       printNameZones: [],
       createdAt: Date.now()
-    };
-    setIsNewTemplate(true);
-    setEditingTemplate(newTemp);
+    });
   };
 
   const saveEditedTemplate = () => {
@@ -161,12 +400,6 @@ const App: React.FC = () => {
     }
     setEditingTemplate(null);
     setIsNewTemplate(false);
-  };
-
-  const deleteTemplate = (id: string) => {
-    if (window.confirm("Delete this template?")) {
-      setTemplates(prev => prev.filter(t => t.id !== id));
-    }
   };
 
   const pdfYToCssTop = (pdfY: number, height: number) => (A4_HEIGHT - pdfY - height) * PREVIEW_SCALE;
@@ -195,656 +428,358 @@ const App: React.FC = () => {
   const removeZone = (type: 'sig' | 'highlight' | 'printName', index: number) => {
     if (!editingTemplate) return;
     if (type === 'sig') {
-      setEditingTemplate({
-        ...editingTemplate,
-        employeeSignatures: editingTemplate.employeeSignatures.filter((_, i) => i !== index)
-      });
+      setEditingTemplate({ ...editingTemplate, employeeSignatures: editingTemplate.employeeSignatures.filter((_, i) => i !== index) });
     } else if (type === 'highlight') {
-      setEditingTemplate({
-        ...editingTemplate,
-        clientHighlights: editingTemplate.clientHighlights.filter((_, i) => i !== index)
-      });
+      setEditingTemplate({ ...editingTemplate, clientHighlights: editingTemplate.clientHighlights.filter((_, i) => i !== index) });
     } else {
-      setEditingTemplate({
-        ...editingTemplate,
-        printNameZones: editingTemplate.printNameZones.filter((_, i) => i !== index)
-      });
+      setEditingTemplate({ ...editingTemplate, printNameZones: editingTemplate.printNameZones.filter((_, i) => i !== index) });
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      <nav className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
-        <div className="p-6">
-          <div className="flex items-center gap-2 text-indigo-400 font-bold text-xl mb-8">
-            <ShieldCheck className="w-8 h-8" />
-            <span>ContractSigner</span>
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
+      <div className="max-w-4xl w-full space-y-8 animate-in fade-in duration-500">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
+              <ShieldCheck className="w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">ContractSigner Pro</h1>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Secure Local Processing
+              </p>
+            </div>
           </div>
-          <ul className="space-y-2">
-            {[
-              { id: ViewMode.DASHBOARD, label: 'Dashboard', icon: Layout },
-              { id: ViewMode.PROCESS, label: 'Sign Document', icon: FileText },
-              { id: ViewMode.TEMPLATES, label: 'Templates', icon: Building2 },
-              { id: ViewMode.SETTINGS, label: 'Identity Settings', icon: Settings },
-            ].map(item => (
-              <li key={item.id}>
-                <button 
-                  onClick={() => setView(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${view === item.id ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}
-                >
-                  <item.icon className="w-5 h-5" /> {item.label}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="flex gap-2">
+             <button onClick={() => setShowSyncModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors" title="Sync Layouts">
+               <CloudDownload className="w-5 h-5" />
+             </button>
+             {processedHistory.length > 0 && (
+               <div className="relative group">
+                 <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                   <History className="w-5 h-5" />
+                 </button>
+                 <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-4">
+                    <p className="text-[10px] font-black uppercase text-slate-400 mb-2">Recent Session</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                       {processedHistory.slice(0, 5).map(doc => (
+                         <div key={doc.id} className="text-[11px] font-medium text-slate-600 border-b border-slate-50 pb-1">
+                           {doc.fileName.slice(0, 30)}...
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+               </div>
+             )}
+          </div>
         </div>
-      </nav>
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header className="mb-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-slate-800">
-            {view === ViewMode.DASHBOARD && "Welcome Back"}
-            {view === ViewMode.PROCESS && "Apply Template"}
-            {view === ViewMode.TEMPLATES && "Template Presets"}
-            {view === ViewMode.SETTINGS && "My Professional Identity"}
-          </h1>
-          <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200 shadow-sm">
-            <CheckCircle2 className="w-3 h-3" /> Local Processing
+        {/* Integrated Identity Card */}
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
+          <div className="flex items-center gap-3 text-slate-900 font-black text-xs uppercase tracking-widest border-b border-slate-100 pb-4">
+            <UserCheck className="w-5 h-5 text-indigo-500" /> Step 1: My Profile
           </div>
-        </header>
-
-        {view === ViewMode.DASHBOARD && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <Building2 className="w-6 h-6 text-indigo-600" />
-                  <span className="text-2xl font-bold">{templates.length}</span>
-                </div>
-                <p className="text-slate-500 text-sm font-medium">Configured Templates</p>
-              </div>
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <PenTool className="w-6 h-6 text-emerald-600" />
-                  {employeeSignature && printName ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <AlertCircle className="w-4 h-4 text-amber-500" />}
-                </div>
-                <p className="text-slate-500 text-sm font-medium">Signature & Name Set</p>
-              </div>
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <History className="w-6 h-6 text-slate-400" />
-                  <span className="text-2xl font-bold">{processedHistory.length}</span>
-                </div>
-                <p className="text-slate-500 text-sm font-medium">Processed Locally</p>
-              </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Print Name</label>
+               <input 
+                 type="text" 
+                 value={printName} 
+                 onChange={(e) => setPrintName(e.target.value)} 
+                 placeholder="Sarah J. Smith, Manager"
+                 className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all"
+               />
+               <p className="text-[10px] text-slate-400 italic">Name added as clear text to signature areas.</p>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <section className="space-y-4">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-slate-400" />
-                  Recent History
-                </h2>
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                  {processedHistory.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400">
-                      <History className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p>No documents processed yet.</p>
-                    </div>
+            
+            <div className="space-y-4">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Signature PNG</label>
+               <div className="relative h-20 w-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex items-center justify-center group transition-all hover:border-indigo-200">
+                  {employeeSignature ? (
+                    <img src={employeeSignature} className="max-h-full max-w-full p-4 object-contain" />
                   ) : (
-                    <div className="divide-y divide-slate-100">
-                      {processedHistory.map(doc => (
-                        <div key={doc.id} className="p-4 hover:bg-slate-50 flex justify-between items-center transition-colors">
-                          <div className="overflow-hidden pr-4">
-                            <p className="font-bold text-slate-800 truncate text-sm">{doc.fileName}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{doc.templateName} • {new Date(doc.processedAt).toLocaleString()}</p>
-                          </div>
-                          <div className="flex-shrink-0">
-                             <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide">Processed</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <PenTool className="w-6 h-6 text-slate-200" />
                   )}
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-indigo-500" />
-                  Ready to Sign?
-                </h2>
-                <div className="grid grid-cols-1 gap-4">
-                  <button onClick={() => setView(ViewMode.PROCESS)} className="bg-indigo-600 text-white p-8 rounded-2xl font-bold flex items-center justify-between hover:bg-indigo-700 transition-all shadow-xl group">
-                    <div className="flex items-center gap-4">
-                       <div className="bg-indigo-500/30 p-3 rounded-2xl"><FileText className="w-8 h-8" /></div>
-                       <div className="text-left">
-                          <p className="text-xl">Upload PDF Contract</p>
-                          <p className="text-indigo-200 text-sm font-normal">Apply your profile to any company template</p>
-                       </div>
-                    </div>
-                    <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
-                  </button>
-                </div>
-              </section>
+                  <input type="file" accept="image/png" onChange={handleSignatureUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Plus className="w-4 h-4" />
+                  </div>
+               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {view === ViewMode.PROCESS && (
-          <div className="max-w-3xl mx-auto space-y-6 animate-in slide-in-from-right-4 duration-300">
-            <div className="bg-white rounded-3xl border border-slate-200 p-10 shadow-sm space-y-10">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-slate-900 font-black text-sm uppercase tracking-widest">
-                    <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white text-[12px]">1</div>
-                    Select Document
+        {/* Main Process Card */}
+        <div className="bg-white rounded-[3rem] border border-slate-200 p-10 shadow-sm space-y-12">
+          
+          {/* File Selection */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 text-slate-900 font-black text-xs uppercase tracking-widest">
+              <FileText className="w-5 h-5 text-indigo-500" /> Step 2: Upload Document
+            </div>
+            <div className={`border-2 border-dashed rounded-3xl p-12 text-center transition-all bg-slate-50 group ${selectedFile ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-200 hover:border-indigo-400'}`}>
+              <input type="file" accept=".pdf" onChange={(e) => {
+                setSelectedFile(e.target.files?.[0] || null);
+                setProcessedPdfUrl(null);
+              }} className="hidden" id="pdf-upload" />
+              <label htmlFor="pdf-upload" className="cursor-pointer block">
+                {selectedFile ? (
+                  <div className="space-y-2">
+                    <p className="text-lg font-black text-slate-900">{selectedFile.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ready to sign • {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
-                  {selectedFile && <button onClick={() => setSelectedFile(null)} className="text-xs text-red-500 font-bold hover:underline">Clear</button>}
-                </div>
-                <div className={`border-2 border-dashed rounded-3xl p-12 text-center transition-all bg-slate-50 group ${selectedFile ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-200 hover:border-indigo-400'}`}>
-                  <input type="file" accept=".pdf" onChange={(e) => {
-                    setSelectedFile(e.target.files?.[0] || null);
-                    setProcessedPdfUrl(null);
-                  }} className="hidden" id="pdf-upload" />
-                  <label htmlFor="pdf-upload" className="cursor-pointer block">
-                    {selectedFile ? (
-                      <div className="space-y-3">
-                        <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto text-emerald-600">
-                          <FileText className="w-10 h-10" />
-                        </div>
-                        <p className="text-lg font-black text-slate-900">{selectedFile.name}</p>
-                        <p className="text-xs text-slate-400">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Ready for processing</p>
-                      </div>
-                    ) : (
-                      <>
-                        <FileText className="w-16 h-16 mx-auto mb-6 text-slate-200 group-hover:text-indigo-400 transition-colors" />
-                        <p className="text-lg font-black text-slate-900">Click to upload or drag contract PDF</p>
-                        <p className="text-sm text-slate-400 mt-2 font-medium">Security focus: File never leaves this browser.</p>
-                      </>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 text-slate-900 font-black text-sm uppercase tracking-widest">
-                   <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white text-[12px]">2</div>
-                   Company Layout
-                </div>
-                <div className="relative">
-                  <select value={selectedTemplate} onChange={(e) => {
-                    setSelectedTemplate(e.target.value);
-                    setProcessedPdfUrl(null);
-                  }} className="w-full p-5 rounded-2xl border-2 border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 appearance-none bg-white font-bold text-slate-800 transition-all">
-                    <option value="">-- Select Template Layout --</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
-                  </select>
-                  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronRight className="w-5 h-5 rotate-90" />
-                  </div>
-                </div>
-                
-                {selectedTemplate && (
-                  <div className="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex flex-wrap gap-4 items-center">
-                    <p className="text-xs font-black text-indigo-900 uppercase tracking-wider">Plan:</p>
-                    {(() => {
-                      const t = templates.find(temp => temp.id === selectedTemplate);
-                      return t ? (
-                        <div className="flex gap-4">
-                          <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-white px-3 py-1.5 rounded-full shadow-sm">
-                            <PenTool className="w-3.5 h-3.5" /> {t.employeeSignatures.length} Signature{t.employeeSignatures.length !== 1 && 's'}
-                          </span>
-                          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-white px-3 py-1.5 rounded-full shadow-sm">
-                            <Type className="w-3.5 h-3.5" /> {t.printNameZones.length} Print Name{t.printNameZones.length !== 1 && 's'}
-                          </span>
-                          <span className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-white px-3 py-1.5 rounded-full shadow-sm">
-                            <MousePointer2 className="w-3.5 h-3.5" /> {t.clientHighlights.length} Client Highlight{t.clientHighlights.length !== 1 && 's'}
-                          </span>
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
+                ) : (
+                  <>
+                    <FileText className="w-12 h-12 mx-auto mb-4 text-slate-200 group-hover:text-indigo-400 transition-colors" />
+                    <p className="text-base font-bold text-slate-900">Choose PDF Contract</p>
+                  </>
                 )}
-              </div>
+              </label>
+            </div>
+          </div>
 
-              <div className="pt-6">
-                <button 
-                  disabled={!selectedFile || !selectedTemplate || !employeeSignature || isProcessing} 
-                  onClick={handleProcess} 
-                  className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-lg hover:bg-black disabled:bg-slate-100 disabled:text-slate-300 flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98]"
-                >
-                  {isProcessing ? <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <><ShieldCheck className="w-6 h-6" /> Sign & Process Now</>}
+          {/* Template Selection */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-slate-900 font-black text-xs uppercase tracking-widest">
+                <Layout className="w-5 h-5 text-indigo-500" /> Step 3: Select Layout
+              </div>
+              {selectedTemplate && (
+                <button onClick={() => {
+                  const t = templates.find(temp => temp.id === selectedTemplate);
+                  if (t) setEditingTemplate({...t});
+                }} className="flex items-center gap-1.5 text-xs font-black text-indigo-600 hover:underline">
+                  <Edit3 className="w-3.5 h-3.5" /> Customize Layout
                 </button>
-              </div>
-
-              {processedPdfUrl && (
-                <div className="p-10 bg-emerald-50 rounded-[2.5rem] text-center border-4 border-emerald-100 animate-in zoom-in-95 duration-300">
-                  <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-                  </div>
-                  <h3 className="text-emerald-900 font-black text-2xl mb-2">Contract Ready!</h3>
-                  <p className="text-emerald-700 text-sm mb-10 font-medium">All signatures, names, and highlights have been applied.</p>
-                  <a href={processedPdfUrl} download={`Signed_${selectedFile?.name}`} className="w-full inline-flex items-center justify-center gap-3 bg-emerald-600 text-white px-10 py-5 rounded-[2rem] text-xl font-black hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200">
-                    <Download className="w-6 h-6" /> Download Signed PDF
-                  </a>
-                </div>
               )}
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <select value={selectedTemplate} onChange={(e) => {
+                  setSelectedTemplate(e.target.value);
+                  setProcessedPdfUrl(null);
+               }} className="w-full p-5 rounded-2xl border-2 border-slate-100 bg-white font-black text-slate-800 transition-all focus:ring-4 focus:ring-indigo-500/10 focus:outline-none">
+                  <option value="">-- Choose Preset Layout --</option>
+                  {templates.map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
+               </select>
+               <button onClick={() => { setIsNewTemplate(true); startNewTemplate(); }} className="p-5 border-2 border-dashed border-slate-200 rounded-2xl font-black text-slate-400 hover:text-indigo-600 hover:border-indigo-400 transition-all flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Create Custom Preset
+               </button>
+            </div>
           </div>
-        )}
 
-        {view === ViewMode.TEMPLATES && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-indigo-500" />
-                Template Library
-              </h2>
-              <button onClick={startNewTemplate} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black hover:bg-indigo-700 shadow-xl transition-all active:scale-95">
-                <Plus className="w-5 h-5" /> New Template
-              </button>
+          {/* Execution */}
+          <div className="pt-6">
+            <button 
+              disabled={!selectedFile || !selectedTemplate || !employeeSignature || isProcessing} 
+              onClick={handleProcess} 
+              className="w-full bg-slate-900 text-white py-6 rounded-[2.5rem] font-black text-xl hover:bg-black disabled:bg-slate-100 disabled:text-slate-300 flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98]"
+            >
+              {isProcessing ? <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <><ShieldCheck className="w-7 h-7" /> Process Signed PDF</>}
+            </button>
+          </div>
+
+          {/* Output */}
+          {processedPdfUrl && (
+            <div className="p-10 bg-emerald-50 rounded-[3rem] text-center border-4 border-emerald-100 animate-in zoom-in-95 duration-300">
+              <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-6" />
+              <h3 className="text-emerald-900 font-black text-2xl mb-2">Success!</h3>
+              <p className="text-emerald-700 text-sm mb-10 font-medium italic">Identity markers applied to your PDF locally.</p>
+              <a href={processedPdfUrl} download={`Signed_${selectedFile?.name}`} className="w-full inline-flex items-center justify-center gap-3 bg-emerald-600 text-white px-10 py-5 rounded-[2rem] text-xl font-black hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200">
+                <Download className="w-6 h-6" /> Download Result
+              </a>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <button onClick={startNewTemplate} className="bg-slate-50 border-4 border-dashed border-slate-200 rounded-3xl p-8 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-300 hover:text-indigo-500 transition-all min-h-[220px] group">
-                <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Plus className="w-8 h-8" />
-                </div>
-                <span className="font-black text-sm uppercase tracking-widest">Create Preset</span>
-              </button>
+          )}
+        </div>
 
-              {templates.map(t => (
-                <div key={t.id} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative group hover:border-indigo-300 hover:shadow-xl transition-all">
-                  <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setIsNewTemplate(false); setEditingTemplate(t); }} className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-100 transition-colors shadow-sm"><Settings className="w-5 h-5" /></button>
-                    <button onClick={() => deleteTemplate(t.id)} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-colors shadow-sm"><Trash2 className="w-5 h-5" /></button>
-                  </div>
-                  <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-8 font-black text-2xl">
-                    {t.companyName ? t.companyName.charAt(0).toUpperCase() : '?'}
-                  </div>
-                  <h3 className="font-black text-slate-900 text-xl truncate pr-20">{t.companyName || 'Untitled Template'}</h3>
-                  <p className="text-xs text-slate-400 mt-2 line-clamp-2 h-8 font-medium">{t.description}</p>
-                  
-                  <div className="mt-8 pt-8 border-t border-slate-50 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <span className="flex-shrink-0 text-[10px] bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-black uppercase tracking-tighter">{t.employeeSignatures.length} Sig</span>
-                    <span className="flex-shrink-0 text-[10px] bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-black uppercase tracking-tighter">{t.printNameZones.length} Name</span>
-                    <span className="flex-shrink-0 text-[10px] bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full font-black uppercase tracking-tighter">{t.clientHighlights.length} HL</span>
-                  </div>
+        {/* Visual Editor Modal */}
+        {editingTemplate && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-lg z-50 flex items-center justify-center p-4 overflow-hidden">
+            <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center"><Building2 className="w-6 h-6" /></div>
+                   <h2 className="text-xl font-black text-slate-900">Layout Preset: {editingTemplate.companyName || 'Custom'}</h2>
                 </div>
-              ))}
-            </div>
-
-            {editingTemplate && (
-              <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-lg z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-                  <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                    <div className="flex items-center gap-6">
-                       <div className="w-16 h-16 bg-slate-900 text-white rounded-[1.5rem] flex items-center justify-center">
-                          <Building2 className="w-8 h-8" />
-                       </div>
-                       <div>
-                         <h2 className="text-2xl font-black text-slate-900 leading-none">{isNewTemplate ? "New Contract Preset" : "Edit Layout Markers"}</h2>
-                         <p className="text-sm text-slate-400 mt-2 font-medium">Define precise coordinates for your identity application</p>
-                       </div>
-                    </div>
-                    <button onClick={() => setEditingTemplate(null)} className="p-4 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-900"><X className="w-8 h-8" /></button>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                    {/* Visual Editor Area */}
-                    <div className="flex-1 bg-slate-100 p-12 overflow-auto flex justify-center items-start">
-                      <div className="bg-white shadow-2xl relative flex-shrink-0 rounded-sm overflow-hidden ring-8 ring-white" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }}>
-                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none select-none">
-                           {[...Array(40)].map((_, i) => (
-                             <div key={i} className="border-b border-slate-900 w-full h-[20px]"></div>
-                           ))}
-                        </div>
-                        
-                        {/* Signature Previews */}
-                        {editingTemplate.employeeSignatures.map((pos, idx) => (
-                          <div key={`sig-${idx}`} className="absolute border-2 border-indigo-600 bg-indigo-100/80 flex items-center justify-center cursor-move shadow-lg ring-4 ring-indigo-500/10"
-                            style={{ left: pos.x * PREVIEW_SCALE, top: pdfYToCssTop(pos.y, pos.height), width: pos.width * PREVIEW_SCALE, height: pos.height * PREVIEW_SCALE }}
-                            onMouseDown={(e) => {
-                              const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                              if (!rect) return;
-                              const onMouseMove = (moveEvent: MouseEvent) => {
-                                const newX = Math.round((moveEvent.clientX - rect.left) / PREVIEW_SCALE);
-                                const newTop = moveEvent.clientY - rect.top;
-                                const newPdfY = Math.round(cssTopToPdfY(newTop, pos.height));
-                                setEditingTemplate(prev => {
-                                  if (!prev) return null;
-                                  const updated = [...prev.employeeSignatures];
-                                  updated[idx] = { ...updated[idx], x: Math.max(0, newX), y: Math.max(0, newPdfY) };
-                                  return { ...prev, employeeSignatures: updated };
-                                });
-                              };
-                              const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-                              window.addEventListener('mousemove', onMouseMove);
-                              window.addEventListener('mouseup', onMouseUp);
-                            }}
-                          ><span className="text-[10px] font-black text-indigo-900 uppercase">Sign {idx+1}</span></div>
-                        ))}
-                        
-                        {/* Print Name Previews */}
-                        {editingTemplate.printNameZones.map((pos, idx) => (
-                          <div key={`name-${idx}`} className="absolute border-2 border-emerald-600 bg-emerald-100/80 flex items-center justify-center cursor-move shadow-lg ring-4 ring-emerald-500/10"
-                            style={{ left: pos.x * PREVIEW_SCALE, top: pdfYToCssTop(pos.y, pos.height), width: pos.width * PREVIEW_SCALE, height: pos.height * PREVIEW_SCALE }}
-                            onMouseDown={(e) => {
-                              const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                              if (!rect) return;
-                              const onMouseMove = (moveEvent: MouseEvent) => {
-                                const newX = Math.round((moveEvent.clientX - rect.left) / PREVIEW_SCALE);
-                                const newTop = moveEvent.clientY - rect.top;
-                                const newPdfY = Math.round(cssTopToPdfY(newTop, pos.height));
-                                setEditingTemplate(prev => {
-                                  if (!prev) return null;
-                                  const updated = [...prev.printNameZones];
-                                  updated[idx] = { ...updated[idx], x: Math.max(0, newX), y: Math.max(0, newPdfY) };
-                                  return { ...prev, printNameZones: updated };
-                                });
-                              };
-                              const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-                              window.addEventListener('mousemove', onMouseMove);
-                              window.addEventListener('mouseup', onMouseUp);
-                            }}
-                          ><span className="text-[10px] font-black text-emerald-900 uppercase">Name {idx+1}</span></div>
-                        ))}
-                        
-                        {/* Highlight Previews */}
-                        {editingTemplate.clientHighlights.map((pos, idx) => (
-                          <div key={`high-${idx}`} className="absolute border-2 border-amber-500 bg-amber-200/80 flex items-center justify-center cursor-move shadow-lg ring-4 ring-amber-500/10"
-                            style={{ left: pos.x * PREVIEW_SCALE, top: pdfYToCssTop(pos.y, pos.height), width: pos.width * PREVIEW_SCALE, height: pos.height * PREVIEW_SCALE }}
-                            onMouseDown={(e) => {
-                              const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                              if (!rect) return;
-                              const onMouseMove = (moveEvent: MouseEvent) => {
-                                const newX = Math.round((moveEvent.clientX - rect.left) / PREVIEW_SCALE);
-                                const newTop = moveEvent.clientY - rect.top;
-                                const newPdfY = Math.round(cssTopToPdfY(newTop, pos.height));
-                                setEditingTemplate(prev => {
-                                  if (!prev) return null;
-                                  const updated = [...prev.clientHighlights];
-                                  updated[idx] = { ...updated[idx], x: Math.max(0, newX), y: Math.max(0, newPdfY) };
-                                  return { ...prev, clientHighlights: updated };
-                                });
-                              };
-                              const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-                              window.addEventListener('mousemove', onMouseMove);
-                              window.addEventListener('mouseup', onMouseUp);
-                            }}
-                          ><span className="text-[10px] font-black text-amber-900 uppercase">HL {idx+1}</span></div>
-                        ))}
-                      </div>
-                    </div>
+                <button onClick={() => setEditingTemplate(null)} className="p-3 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-6 h-6" /></button>
+              </div>
+              
+              <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* Canvas */}
+                <div className="flex-1 bg-slate-100 p-12 overflow-auto flex justify-center items-start">
+                  <div className="bg-white shadow-2xl relative flex-shrink-0 ring-8 ring-white" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }}>
+                    {/* Markers */}
+                    {editingTemplate.employeeSignatures.map((pos, idx) => (
+                      <div key={`sig-${idx}`} className="absolute border-2 border-indigo-600 bg-indigo-100/80 flex items-center justify-center cursor-move shadow-lg ring-4 ring-indigo-500/10"
+                        style={{ left: (pos.x || 0) * PREVIEW_SCALE, top: pdfYToCssTop(pos.y || 0, pos.height || 40), width: (pos.width || 120) * PREVIEW_SCALE, height: (pos.height || 40) * PREVIEW_SCALE }}
+                        onMouseDown={(e) => {
+                          const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                          if (!rect) return;
+                          const onMouseMove = (moveEvent: MouseEvent) => {
+                            const newX = Math.round((moveEvent.clientX - rect.left) / PREVIEW_SCALE);
+                            const newTop = moveEvent.clientY - rect.top;
+                            const newPdfY = Math.round(cssTopToPdfY(newTop, pos.height));
+                            setEditingTemplate(prev => {
+                              if (!prev) return null;
+                              const updated = [...prev.employeeSignatures];
+                              updated[idx] = { ...updated[idx], x: Math.max(0, newX), y: Math.max(0, newPdfY) };
+                              return { ...prev, employeeSignatures: updated };
+                            });
+                          };
+                          const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+                          window.addEventListener('mousemove', onMouseMove);
+                          window.addEventListener('mouseup', onMouseUp);
+                        }}
+                      ><span className="text-[10px] font-black text-indigo-900 uppercase">Sign</span></div>
+                    ))}
                     
-                    {/* Controls Sidebar */}
-                    <div className="w-full lg:w-[480px] bg-slate-50 border-l border-slate-200 p-10 overflow-y-auto space-y-10 shadow-2xl z-10">
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">General Info</label>
-                        <div className="space-y-4">
-                           <input type="text" value={editingTemplate.companyName} onChange={(e) => setEditingTemplate({...editingTemplate, companyName: e.target.value})} className="w-full p-5 bg-white rounded-2xl font-black text-lg focus:ring-4 focus:ring-indigo-500/10 focus:outline-none shadow-sm border-0" placeholder="Company Name" autoFocus />
-                           <input type="text" value={editingTemplate.description} onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})} className="w-full p-5 bg-white rounded-2xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:outline-none shadow-sm border-0" placeholder="Brief Description (e.g. Sales Master Contract)" />
-                        </div>
-                      </div>
+                    {editingTemplate.printNameZones.map((pos, idx) => (
+                      <div key={`name-${idx}`} className="absolute border-2 border-emerald-600 bg-emerald-100/80 flex items-center justify-center cursor-move shadow-lg ring-4 ring-emerald-500/10"
+                        style={{ left: (pos.x || 0) * PREVIEW_SCALE, top: pdfYToCssTop(pos.y || 0, pos.height || 15), width: (pos.width || 150) * PREVIEW_SCALE, height: (pos.height || 15) * PREVIEW_SCALE }}
+                        onMouseDown={(e) => {
+                          const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                          if (!rect) return;
+                          const onMouseMove = (moveEvent: MouseEvent) => {
+                            const newX = Math.round((moveEvent.clientX - rect.left) / PREVIEW_SCALE);
+                            const newTop = moveEvent.clientY - rect.top;
+                            const newPdfY = Math.round(cssTopToPdfY(newTop, pos.height));
+                            setEditingTemplate(prev => {
+                              if (!prev) return null;
+                              const updated = [...prev.printNameZones];
+                              updated[idx] = { ...updated[idx], x: Math.max(0, newX), y: Math.max(0, newPdfY) };
+                              return { ...prev, printNameZones: updated };
+                            });
+                          };
+                          const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+                          window.addEventListener('mousemove', onMouseMove);
+                          window.addEventListener('mouseup', onMouseUp);
+                        }}
+                      ><span className="text-[10px] font-black text-emerald-900 uppercase">Name</span></div>
+                    ))}
+                    
+                    {editingTemplate.clientHighlights.map((pos, idx) => (
+                      <div key={`high-${idx}`} className="absolute border-2 border-amber-500 bg-amber-200/80 flex items-center justify-center cursor-move shadow-lg ring-4 ring-amber-500/10"
+                        style={{ left: (pos.x || 0) * PREVIEW_SCALE, top: pdfYToCssTop(pos.y || 0, pos.height || 50), width: (pos.width || 150) * PREVIEW_SCALE, height: (pos.height || 50) * PREVIEW_SCALE }}
+                        onMouseDown={(e) => {
+                          const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                          if (!rect) return;
+                          const onMouseMove = (moveEvent: MouseEvent) => {
+                            const newX = Math.round((moveEvent.clientX - rect.left) / PREVIEW_SCALE);
+                            const newTop = moveEvent.clientY - rect.top;
+                            const newPdfY = Math.round(cssTopToPdfY(newTop, pos.height));
+                            setEditingTemplate(prev => {
+                              if (!prev) return null;
+                              const updated = [...prev.clientHighlights];
+                              updated[idx] = { ...updated[idx], x: Math.max(0, newX), y: Math.max(0, newPdfY) };
+                              return { ...prev, clientHighlights: updated };
+                            });
+                          };
+                          const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+                          window.addEventListener('mousemove', onMouseMove);
+                          window.addEventListener('mouseup', onMouseUp);
+                        }}
+                      ><span className="text-[10px] font-black text-amber-900 uppercase">HL</span></div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Sidebar Controls */}
+                <div className="w-full lg:w-[420px] bg-slate-50 border-l border-slate-100 p-8 overflow-y-auto space-y-8 shadow-2xl z-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preset Info</label>
+                    <input type="text" value={editingTemplate.companyName} onChange={(e) => setEditingTemplate({...editingTemplate, companyName: e.target.value})} className="w-full p-4 bg-white rounded-2xl font-black shadow-sm border-0 focus:ring-4 focus:ring-indigo-500/10" placeholder="e.g. Acme Corp" />
+                  </div>
 
-                      {/* Signature Controls */}
-                      <div className="space-y-6">
-                        <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                           <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                             <PenTool className="w-3.5 h-3.5" /> Identity Signatures
-                           </label>
-                           <button onClick={() => addZone('sig')} className="text-[11px] bg-indigo-600 text-white px-4 py-2 rounded-xl font-black flex items-center gap-1.5 hover:bg-indigo-700 transition-all shadow-lg active:scale-95 shadow-indigo-100">
-                             <Plus className="w-3.5 h-3.5"/> Add New
-                           </button>
-                        </div>
-                        <div className="space-y-4">
-                          {editingTemplate.employeeSignatures.length === 0 && <p className="text-[10px] text-slate-300 italic py-4 text-center border-2 border-dashed rounded-2xl">No signature zones added yet</p>}
-                          {editingTemplate.employeeSignatures.map((pos, idx) => (
-                            <div key={idx} className="p-6 bg-white rounded-3xl shadow-sm border border-indigo-50 animate-in slide-in-from-right-4 duration-200">
-                              <div className="flex justify-between items-center mb-5">
-                                 <span className="text-[11px] font-black text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg uppercase tracking-wider">Placement #{idx+1}</span>
-                                 <button onClick={() => removeZone('sig', idx)} className="text-red-400 hover:text-red-600 transition-colors p-1"><Trash2 className="w-4.5 h-4.5"/></button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Page</label>
-                                  <input type="number" value={pos.page} onChange={(e) => {
-                                    const updated = [...editingTemplate.employeeSignatures];
-                                    updated[idx] = { ...updated[idx], page: parseInt(e.target.value) || 1 };
-                                    setEditingTemplate({...editingTemplate, employeeSignatures: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Width</label>
-                                  <input type="number" value={pos.width} onChange={(e) => {
-                                    const updated = [...editingTemplate.employeeSignatures];
-                                    updated[idx] = { ...updated[idx], width: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, employeeSignatures: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Height</label>
-                                  <input type="number" value={pos.height} onChange={(e) => {
-                                    const updated = [...editingTemplate.employeeSignatures];
-                                    updated[idx] = { ...updated[idx], height: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, employeeSignatures: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">X Coordinate</label>
-                                  <input type="number" value={pos.x} onChange={(e) => {
-                                    const updated = [...editingTemplate.employeeSignatures];
-                                    updated[idx] = { ...updated[idx], x: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, employeeSignatures: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Y Coordinate</label>
-                                  <input type="number" value={pos.y} onChange={(e) => {
-                                    const updated = [...editingTemplate.employeeSignatures];
-                                    updated[idx] = { ...updated[idx], y: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, employeeSignatures: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center"><label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Employee Signatures</label><button onClick={() => addZone('sig')} className="text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-black">+ Add</button></div>
+                    {editingTemplate.employeeSignatures.map((pos, idx) => (
+                      <div key={idx} className="p-4 bg-white rounded-2xl shadow-sm border border-indigo-5 grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="col-span-2 flex justify-between font-bold"><span>Pos #{idx+1}</span><button onClick={() => removeZone('sig', idx)} className="text-red-400"><Trash2 className="w-3 h-3"/></button></div>
+                        <input type="number" value={pos.page} onChange={(e) => {
+                          const updated = [...editingTemplate.employeeSignatures];
+                          updated[idx] = { ...updated[idx], page: parseInt(e.target.value) || 1 };
+                          setEditingTemplate({...editingTemplate, employeeSignatures: updated});
+                        }} className="p-2 border-slate-100 border rounded" placeholder="P" />
+                        <input type="number" value={pos.width} onChange={(e) => {
+                          const updated = [...editingTemplate.employeeSignatures];
+                          updated[idx] = { ...updated[idx], width: parseInt(e.target.value) || 0 };
+                          setEditingTemplate({...editingTemplate, employeeSignatures: updated});
+                        }} className="p-2 border-slate-100 border rounded" placeholder="W" />
                       </div>
+                    ))}
+                  </div>
 
-                      {/* Print Name Controls */}
-                      <div className="space-y-6">
-                        <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                           <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                             <Type className="w-3.5 h-3.5" /> Identity Print Names
-                           </label>
-                           <button onClick={() => addZone('printName')} className="text-[11px] bg-emerald-600 text-white px-4 py-2 rounded-xl font-black flex items-center gap-1.5 hover:bg-emerald-700 transition-all shadow-lg active:scale-95 shadow-emerald-100">
-                             <Plus className="w-3.5 h-3.5"/> Add New
-                           </button>
-                        </div>
-                        <div className="space-y-4">
-                          {editingTemplate.printNameZones.length === 0 && <p className="text-[10px] text-slate-300 italic py-4 text-center border-2 border-dashed rounded-2xl">No print name zones added yet</p>}
-                          {editingTemplate.printNameZones.map((pos, idx) => (
-                            <div key={idx} className="p-6 bg-white rounded-3xl shadow-sm border border-emerald-50 animate-in slide-in-from-right-4 duration-200">
-                              <div className="flex justify-between items-center mb-5">
-                                 <span className="text-[11px] font-black text-emerald-900 bg-emerald-50 px-3 py-1.5 rounded-lg uppercase tracking-wider">Name Placement #{idx+1}</span>
-                                 <button onClick={() => removeZone('printName', idx)} className="text-red-400 hover:text-red-600 transition-colors p-1"><Trash2 className="w-4.5 h-4.5"/></button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Page</label>
-                                  <input type="number" value={pos.page} onChange={(e) => {
-                                    const updated = [...editingTemplate.printNameZones];
-                                    updated[idx] = { ...updated[idx], page: parseInt(e.target.value) || 1 };
-                                    setEditingTemplate({...editingTemplate, printNameZones: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Font Size</label>
-                                  <input type="number" value={pos.fontSize} onChange={(e) => {
-                                    const updated = [...editingTemplate.printNameZones];
-                                    updated[idx] = { ...updated[idx], fontSize: parseInt(e.target.value) || 10 };
-                                    setEditingTemplate({...editingTemplate, printNameZones: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">X Coordinate</label>
-                                  <input type="number" value={pos.x} onChange={(e) => {
-                                    const updated = [...editingTemplate.printNameZones];
-                                    updated[idx] = { ...updated[idx], x: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, printNameZones: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Y Coordinate</label>
-                                  <input type="number" value={pos.y} onChange={(e) => {
-                                    const updated = [...editingTemplate.printNameZones];
-                                    updated[idx] = { ...updated[idx], y: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, printNameZones: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-400" />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center"><label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Print Names</label><button onClick={() => addZone('printName')} className="text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-black">+ Add</button></div>
+                    {editingTemplate.printNameZones.map((pos, idx) => (
+                      <div key={idx} className="p-4 bg-white rounded-2xl shadow-sm border border-emerald-5 grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="col-span-2 flex justify-between font-bold"><span>Name Pos #{idx+1}</span><button onClick={() => removeZone('printName', idx)} className="text-red-400"><Trash2 className="w-3 h-3"/></button></div>
+                        <input type="number" value={pos.page} onChange={(e) => {
+                          const updated = [...editingTemplate.printNameZones];
+                          updated[idx] = { ...updated[idx], page: parseInt(e.target.value) || 1 };
+                          setEditingTemplate({...editingTemplate, printNameZones: updated});
+                        }} className="p-2 border-slate-100 border rounded" placeholder="P" />
+                        <input type="number" value={pos.fontSize} onChange={(e) => {
+                          const updated = [...editingTemplate.printNameZones];
+                          updated[idx] = { ...updated[idx], fontSize: parseInt(e.target.value) || 10 };
+                          setEditingTemplate({...editingTemplate, printNameZones: updated});
+                        }} className="p-2 border-slate-100 border rounded" placeholder="Size" />
                       </div>
+                    ))}
+                  </div>
 
-                      {/* Highlight Controls */}
-                      <div className="space-y-6">
-                        <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                           <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
-                             <MousePointer2 className="w-3.5 h-3.5" /> Client Signing Areas
-                           </label>
-                           <button onClick={() => addZone('highlight')} className="text-[11px] bg-amber-500 text-white px-4 py-2 rounded-xl font-black flex items-center gap-1.5 hover:bg-amber-600 transition-all shadow-lg active:scale-95 shadow-amber-100">
-                             <Plus className="w-3.5 h-3.5"/> Add New
-                           </button>
-                        </div>
-                        <div className="space-y-4">
-                          {editingTemplate.clientHighlights.length === 0 && <p className="text-[10px] text-slate-300 italic py-4 text-center border-2 border-dashed rounded-2xl">No highlight zones added yet</p>}
-                          {editingTemplate.clientHighlights.map((pos, idx) => (
-                            <div key={idx} className="p-6 bg-white rounded-3xl shadow-sm border border-amber-50 animate-in slide-in-from-right-4 duration-200">
-                              <div className="flex justify-between items-center mb-5">
-                                 <span className="text-[11px] font-black text-amber-900 bg-amber-50 px-3 py-1.5 rounded-lg uppercase tracking-wider">Highlight Area #{idx+1}</span>
-                                 <button onClick={() => removeZone('highlight', idx)} className="text-red-400 hover:text-red-600 transition-colors p-1"><Trash2 className="w-4.5 h-4.5"/></button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Page</label>
-                                  <input type="number" value={pos.page} onChange={(e) => {
-                                    const updated = [...editingTemplate.clientHighlights];
-                                    updated[idx] = { ...updated[idx], page: parseInt(e.target.value) || 1 };
-                                    setEditingTemplate({...editingTemplate, clientHighlights: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Width</label>
-                                  <input type="number" value={pos.width} onChange={(e) => {
-                                    const updated = [...editingTemplate.clientHighlights];
-                                    updated[idx] = { ...updated[idx], width: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, clientHighlights: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Height</label>
-                                  <input type="number" value={pos.height} onChange={(e) => {
-                                    const updated = [...editingTemplate.clientHighlights];
-                                    updated[idx] = { ...updated[idx], height: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, clientHighlights: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">X Coordinate</label>
-                                  <input type="number" value={pos.x} onChange={(e) => {
-                                    const updated = [...editingTemplate.clientHighlights];
-                                    updated[idx] = { ...updated[idx], x: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, clientHighlights: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase">Y Coordinate</label>
-                                  <input type="number" value={pos.y} onChange={(e) => {
-                                    const updated = [...editingTemplate.clientHighlights];
-                                    updated[idx] = { ...updated[idx], y: parseInt(e.target.value) || 0 };
-                                    setEditingTemplate({...editingTemplate, clientHighlights: updated});
-                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center"><label className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Highlights</label><button onClick={() => addZone('highlight')} className="text-[10px] bg-amber-500 text-white px-3 py-1.5 rounded-lg font-black">+ Add</button></div>
+                    {editingTemplate.clientHighlights.map((pos, idx) => (
+                      <div key={idx} className="p-4 bg-white rounded-2xl shadow-sm border border-amber-5 grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="col-span-2 flex justify-between font-bold"><span>HL Area #{idx+1}</span><button onClick={() => removeZone('highlight', idx)} className="text-red-400"><Trash2 className="w-3 h-3"/></button></div>
+                        <input type="number" value={pos.page} onChange={(e) => {
+                          const updated = [...editingTemplate.clientHighlights];
+                          updated[idx] = { ...updated[idx], page: parseInt(e.target.value) || 1 };
+                          setEditingTemplate({...editingTemplate, clientHighlights: updated});
+                        }} className="p-2 border-slate-100 border rounded" placeholder="P" />
+                        <input type="number" value={pos.height} onChange={(e) => {
+                          const updated = [...editingTemplate.clientHighlights];
+                          updated[idx] = { ...updated[idx], height: parseInt(e.target.value) || 0 };
+                          setEditingTemplate({...editingTemplate, clientHighlights: updated});
+                        }} className="p-2 border-slate-100 border rounded" placeholder="H" />
                       </div>
+                    ))}
+                  </div>
 
-                      <div className="pt-10 border-t border-slate-200 flex gap-4 sticky bottom-0 bg-slate-50 z-20 pb-4">
-                        <button onClick={saveEditedTemplate} className="flex-1 bg-slate-900 text-white py-5 rounded-[2rem] font-black text-lg shadow-2xl hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                           <Save className="w-5 h-5" /> Save Layout
-                        </button>
-                        <button onClick={() => setEditingTemplate(null)} className="px-10 py-5 bg-white border-2 border-slate-200 rounded-[2rem] font-black text-slate-600 hover:bg-slate-100 transition-colors">Cancel</button>
-                      </div>
-                    </div>
+                  <div className="pt-8 border-t border-slate-200 sticky bottom-0 bg-slate-50 flex gap-4">
+                    <button onClick={saveEditedTemplate} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-black transition-all">Save Template</button>
+                    <button onClick={() => setEditingTemplate(null)} className="px-6 py-4 bg-white border border-slate-200 rounded-2xl font-black text-slate-600">Cancel</button>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {view === ViewMode.SETTINGS && (
-          <div className="max-w-2xl mx-auto space-y-8 animate-in slide-in-from-right-4 duration-300">
-             <div className="bg-white p-12 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
-                   <ShieldCheck className="w-64 h-64" />
-                </div>
-                <h3 className="text-3xl font-black text-slate-900 mb-8">Identity Profile</h3>
-                
-                <div className="space-y-12">
-                   <div className="space-y-5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Type className="w-4 h-4 text-indigo-500" />
-                        Professional Name
-                      </label>
-                      <input 
-                        type="text" 
-                        value={printName} 
-                        onChange={(e) => setPrintName(e.target.value)} 
-                        placeholder="Full name & title (e.g. Sarah J. Smith, CEO)"
-                        className="w-full p-6 bg-slate-50 border-0 rounded-[2rem] font-black text-xl focus:ring-4 focus:ring-indigo-500/10 focus:outline-none shadow-inner text-slate-800"
-                      />
-                      <p className="text-xs text-slate-400 font-medium">This name will be printed as clear text in defined areas of the PDF.</p>
-                   </div>
-
-                   <div className="space-y-5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                        <PenTool className="w-4 h-4 text-indigo-500" />
-                        Official Signature PNG
-                      </label>
-                      <div className="w-full aspect-[2/1] border-4 border-dashed border-slate-100 rounded-[2.5rem] flex items-center justify-center bg-slate-50 relative group overflow-hidden transition-all hover:border-indigo-100 shadow-inner">
-                        {employeeSignature ? (
-                          <div className="relative w-full h-full flex items-center justify-center p-12">
-                            <img src={employeeSignature} className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105" />
-                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                              <PenTool className="w-12 h-12 text-white" />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center text-slate-300">
-                             <PenTool className="w-20 h-20 mx-auto mb-4 opacity-10" />
-                             <p className="font-black text-[10px] uppercase tracking-widest">No signature data</p>
-                          </div>
-                        )}
-                        <input type="file" accept="image/png" onChange={handleSignatureUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                      </div>
-                      
-                      <label className="block w-full text-center bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black text-lg cursor-pointer hover:bg-black transition-all shadow-xl active:scale-[0.98]">
-                        {employeeSignature ? "Change Signature PNG" : "Upload PNG Signature"}
-                        <input type="file" accept="image/png" onChange={handleSignatureUpload} className="hidden" />
-                      </label>
-                      <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">Supports transparent PNG for best results</p>
-                   </div>
-                </div>
-             </div>
+        {/* Sync Modal */}
+        {showSyncModal && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg p-8 animate-in zoom-in-95">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3"><CloudDownload className="w-6 h-6 text-emerald-600" /><h2 className="text-xl font-black text-slate-900">Import Presets</h2></div>
+                <button onClick={() => setShowSyncModal(false)} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="space-y-6">
+                <input type="text" value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Google Sheet URL..." />
+                <button onClick={handleSyncFromSheets} disabled={isSyncing} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-xl">
+                  {isSyncing ? "Syncing..." : "Sync from Sheets"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
-      </main>
+
+      </div>
     </div>
   );
 };
