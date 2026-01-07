@@ -623,6 +623,14 @@ const App: React.FC = () => {
                                   }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
                                 </div>
                                 <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase">Height</label>
+                                  <input type="number" value={pos.height} onChange={(e) => {
+                                    const updated = [...editingTemplate.employeeSignatures];
+                                    updated[idx] = { ...updated[idx], height: parseInt(e.target.value) || 0 };
+                                    setEditingTemplate({...editingTemplate, employeeSignatures: updated});
+                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400" />
+                                </div>
+                                <div className="space-y-1">
                                   <label className="text-[9px] font-black text-slate-400 uppercase">X Coordinate</label>
                                   <input type="number" value={pos.x} onChange={(e) => {
                                     const updated = [...editingTemplate.employeeSignatures];
@@ -733,6 +741,14 @@ const App: React.FC = () => {
                                   <input type="number" value={pos.width} onChange={(e) => {
                                     const updated = [...editingTemplate.clientHighlights];
                                     updated[idx] = { ...updated[idx], width: parseInt(e.target.value) || 0 };
+                                    setEditingTemplate({...editingTemplate, clientHighlights: updated});
+                                  }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase">Height</label>
+                                  <input type="number" value={pos.height} onChange={(e) => {
+                                    const updated = [...editingTemplate.clientHighlights];
+                                    updated[idx] = { ...updated[idx], height: parseInt(e.target.value) || 0 };
                                     setEditingTemplate({...editingTemplate, clientHighlights: updated});
                                   }} className="w-full p-3 bg-slate-50 border-0 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-400" />
                                 </div>
