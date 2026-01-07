@@ -7,12 +7,17 @@ export interface Coordinate {
   page: number;
 }
 
+export interface TextZone extends Coordinate {
+  fontSize: number;
+}
+
 export interface ContractTemplate {
   id: string;
   companyName: string;
   description: string;
   employeeSignatures: Coordinate[];
   clientHighlights: Coordinate[];
+  printNameZones: TextZone[];
   createdAt: number;
 }
 
@@ -26,6 +31,7 @@ export interface ProcessedDocument {
 export interface AppState {
   templates: ContractTemplate[];
   employeeSignature: string | null; // Base64 PNG
+  printName: string;
   processedHistory: ProcessedDocument[];
 }
 

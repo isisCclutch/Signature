@@ -20,14 +20,16 @@ async function loadPdfLib() {
 export async function processContract(
   pdfFile: File,
   signatureBase64: string,
+  printName: string,
   template: any // ContractTemplate
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb } = await loadPdfLib() as any;
+  const { PDFDocument, rgb, StandardFonts } = await loadPdfLib() as any;
 
   // Load existing PDF
   const existingPdfBytes = await pdfFile.arrayBuffer();
   const pdfDoc = await PDFDocument.load(existingPdfBytes);
   const pages = pdfDoc.getPages();
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   // 1. Add Employee Signatures
   if (signatureBase64 && template.employeeSignatures) {
@@ -43,7 +45,21 @@ export async function processContract(
     }
   }
 
-  // 2. Add Client Highlights
+  // 2. Add Print Names (Text)
+  if (printName && template.printNameZones) {
+    for (const zone of template.printNameZones) {
+      const targetPage = pages[zone.page - 1] || pages[0];
+      targetPage.drawText(printName, {
+        x: zone.x,
+        y: zone.y,
+        size: zone.fontSize || 12,
+        font: helveticaFont,
+        color: rgb(0, 0, 0),
+      });
+    }
+  }
+
+  // 3. Add Client Highlights
   if (template.clientHighlights) {
     for (const pos of template.clientHighlights) {
       const targetPage = pages[pos.page - 1] || pages[0];
