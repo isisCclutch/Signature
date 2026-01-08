@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Settings, 
@@ -28,7 +28,10 @@ import {
   Maximize2,
   Hash,
   Layers,
-  RotateCcw
+  RotateCcw,
+  Search,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { ViewMode, ContractTemplate, Coordinate, ProcessedDocument, TextZone } from './types';
 import { processContract } from './services/pdfService';
@@ -243,13 +246,13 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
 ];
 
 const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.PROCESS);
   const [templates, setTemplates] = useState<ContractTemplate[]>(() => {
     const saved = localStorage.getItem('contract_templates');
     if (saved) {
       const parsed = JSON.parse(saved);
       const existingIds = new Set(parsed.map((t: any) => t.id));
       const missingInitial = INITIAL_TEMPLATES.filter(t => !existingIds.has(t.id));
-      // Re-merge with alphabetized defaults
       return [...parsed, ...missingInitial].sort((a,b) => a.companyName.localeCompare(b.companyName));
     }
     return [...INITIAL_TEMPLATES].sort((a,b) => a.companyName.localeCompare(b.companyName));
@@ -275,7 +278,7 @@ const App: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
   const [editorPage, setEditorPage] = useState<number>(1);
   const [isNewTemplate, setIsNewTemplate] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     localStorage.setItem('contract_templates', JSON.stringify(templates));
@@ -284,6 +287,13 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('processed_history', JSON.stringify(processedHistory));
   }, [processedHistory]);
+
+  const filteredTemplates = useMemo(() => {
+    return templates.filter(t => 
+      t.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchTerm.toLowerCase())
+    ).sort((a, b) => a.companyName.localeCompare(b.companyName));
+  }, [templates, searchTerm]);
 
   const handleProcess = async () => {
     if (!selectedFile || !selectedTemplate || !employeeSignature) {
@@ -354,10 +364,26 @@ const App: React.FC = () => {
       newTemplates = templates.map(t => t.id === editingTemplate.id ? editingTemplate : t);
     }
     
-    // Always maintain alphabetical order
     setTemplates(newTemplates.sort((a,b) => a.companyName.localeCompare(b.companyName)));
     setEditingTemplate(null);
     setIsNewTemplate(false);
+  };
+
+  const duplicateTemplate = (template: ContractTemplate) => {
+    const newTemplate = {
+      ...template,
+      id: `copy-${Date.now()}`,
+      companyName: `${template.companyName} (Copy)`,
+      createdAt: Date.now()
+    };
+    setTemplates(prev => [...prev, newTemplate].sort((a,b) => a.companyName.localeCompare(b.companyName)));
+  };
+
+  const deleteTemplate = (id: string) => {
+    if (confirm("Delete this template permanently?")) {
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      if (selectedTemplate === id) setSelectedTemplate('');
+    }
   };
 
   const pdfYToCssTop = (pdfY: number, height: number) => (A4_HEIGHT - pdfY - height) * PREVIEW_SCALE;
@@ -417,89 +443,256 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col py-12 px-4 items-center overflow-x-hidden">
       <div className="max-w-4xl w-full space-y-8 animate-in fade-in duration-500">
         
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Navigation Tabs */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
-              <ShieldCheck className="w-7 h-7" />
+            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <ShieldCheck className="w-6 h-6" />
             </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900">ContractSigner Pro</h1>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Secure Local Processing
-              </p>
-            </div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">ContractSigner Pro</h1>
           </div>
-          <div className="flex gap-2">
-             <button onClick={() => setShowSyncModal(true)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors" title="Sync Layouts">
-               <CloudDownload className="w-5 h-5" />
-             </button>
-          </div>
-        </div>
-
-        {/* Identity & File Process Cards */}
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee Print Name</label>
-               <input 
-                 type="text" 
-                 value={printName} 
-                 onChange={(e) => setPrintName(e.target.value)} 
-                 placeholder="Enter full name..."
-                 className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all"
-               />
-            </div>
-            <div className="space-y-4">
-               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Signature PNG</label>
-               <div className="relative h-20 w-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex items-center justify-center group">
-                  {employeeSignature ? <img src={employeeSignature} className="max-h-full p-4 object-contain" /> : <PenTool className="w-6 h-6 text-slate-200" />}
-                  <input type="file" accept="image/png" onChange={handleSignatureUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-               </div>
-            </div>
+          <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm self-center">
+            <button 
+              onClick={() => setViewMode(ViewMode.PROCESS)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${viewMode === ViewMode.PROCESS ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            >
+              <FileText className="w-4 h-4" /> Process Contract
+            </button>
+            <button 
+              onClick={() => setViewMode(ViewMode.TEMPLATES)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${viewMode === ViewMode.TEMPLATES ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            >
+              <Layout className="w-4 h-4" /> Manage Templates
+            </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="w-full p-5 rounded-2xl border-2 border-slate-100 bg-white font-black">
-                  <option value="">-- Choose Template --</option>
-                  {[...templates].sort((a,b) => a.companyName.localeCompare(b.companyName)).map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
-               </select>
-               <button onClick={() => { setIsNewTemplate(true); setEditingTemplate({ id: `custom-${Date.now()}`, companyName: '', description: '', employeeSignatures: [], clientHighlights: [], printNameZones: [], createdAt: Date.now() }); setEditorPage(1); }} className="p-5 border-2 border-dashed border-slate-200 rounded-2xl font-black text-slate-400 hover:text-indigo-600 flex items-center justify-center gap-2">
-                  <Plus className="w-4 h-4" /> New Template
-               </button>
-           </div>
-           
-           {selectedTemplate && (
-             <div className="flex justify-center">
-               <button onClick={() => { const t = templates.find(x => x.id === selectedTemplate); if(t) { setEditingTemplate({...t}); setEditorPage(t.employeeSignatures[0]?.page || t.clientHighlights[0]?.page || 1); } }} className="text-indigo-600 font-black text-sm hover:underline flex items-center gap-2">
-                 <Edit3 className="w-4 h-4" /> Edit Selected Template Layout
-               </button>
-             </div>
-           )}
+        {/* Tab Content: PROCESS */}
+        {viewMode === ViewMode.PROCESS && (
+          <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+            {/* Identity Card */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <UserCheck className="w-3 h-3 text-indigo-500" /> Employee Print Name
+                  </label>
+                  <input 
+                    type="text" 
+                    value={printName} 
+                    onChange={(e) => setPrintName(e.target.value)} 
+                    placeholder="Enter full name for contract print areas..."
+                    className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <PenTool className="w-3 h-3 text-indigo-500" /> Signature PNG
+                  </label>
+                  <div className="relative h-20 w-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center group overflow-hidden hover:border-indigo-400 transition-all">
+                    {employeeSignature ? (
+                      <div className="relative h-full w-full flex items-center justify-center p-4 bg-white">
+                        <img src={employeeSignature} className="max-h-full max-w-full object-contain" />
+                        <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <span className="text-[10px] font-black text-indigo-600 bg-white px-3 py-1 rounded-full shadow-lg">Change File</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <PenTool className="w-6 h-6 text-slate-300" />
+                        <span className="text-[10px] font-bold text-slate-400">Upload PNG</span>
+                      </div>
+                    )}
+                    <input type="file" accept="image/png" onChange={handleSignatureUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  </div>
+                </div>
+              </div>
+            </div>
 
-           <div className="space-y-4">
-              <input type="file" accept=".pdf" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="main-upload" />
-              <label htmlFor="main-upload" className={`border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer block transition-all ${selectedFile ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-indigo-400'}`}>
-                <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-                <p className="font-bold">{selectedFile ? selectedFile.name : "Select Contract PDF"}</p>
-              </label>
-           </div>
+            {/* Process Card */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Selected Layout</label>
+                  <select 
+                    value={selectedTemplate} 
+                    onChange={(e) => setSelectedTemplate(e.target.value)} 
+                    className="w-full p-5 rounded-2xl border-2 border-slate-100 bg-white font-black text-slate-900 focus:border-indigo-500/50 transition-all focus:outline-none"
+                  >
+                    <option value="">-- Choose Template --</option>
+                    {templates.map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col justify-end pb-1 px-1">
+                   {selectedTemplate && (
+                     <button 
+                        onClick={() => { const t = templates.find(x => x.id === selectedTemplate); if(t) { setEditingTemplate({...t}); setEditorPage(t.employeeSignatures[0]?.page || t.clientHighlights[0]?.page || 1); } }} 
+                        className="text-indigo-600 font-black text-xs hover:underline flex items-center gap-2"
+                      >
+                       <Edit3 className="w-4 h-4" /> Quick Edit Selected Template
+                     </button>
+                   )}
+                </div>
+              </div>
 
-           <button disabled={!selectedFile || !selectedTemplate || !employeeSignature || isProcessing} onClick={handleProcess} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-black disabled:bg-slate-100 flex items-center justify-center gap-3">
-             {isProcessing ? "Processing..." : "Sign & Generate"}
-           </button>
+              <div className="space-y-4">
+                <input type="file" accept=".pdf" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="main-upload" />
+                <label htmlFor="main-upload" className={`border-2 border-dashed rounded-3xl p-10 text-center cursor-pointer block transition-all ${selectedFile ? 'border-emerald-400 bg-emerald-50/30 text-emerald-700' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50'}`}>
+                  <FileText className={`w-12 h-12 mx-auto mb-3 ${selectedFile ? 'text-emerald-500' : 'text-slate-300'}`} />
+                  <p className="font-black text-lg">{selectedFile ? selectedFile.name : "Select Contract PDF"}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase mt-1">Supports standard PDF formats</p>
+                </label>
+              </div>
 
-           {processedPdfUrl && (
-             <a href={processedPdfUrl} download="signed_contract.pdf" className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-lg text-center block shadow-lg">
-               Download Signed PDF
-             </a>
-           )}
-        </div>
+              <div className="pt-4 flex flex-col gap-4">
+                <button 
+                  disabled={!selectedFile || !selectedTemplate || !employeeSignature || isProcessing} 
+                  onClick={handleProcess} 
+                  className="w-full bg-slate-900 text-white py-6 rounded-3xl font-black text-xl hover:bg-black disabled:bg-slate-100 disabled:text-slate-400 transition-all flex items-center justify-center gap-4 shadow-xl shadow-slate-200"
+                >
+                  {isProcessing ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    <>
+                      <PenTool className="w-6 h-6" /> Sign & Generate
+                    </>
+                  )}
+                </button>
+
+                {processedPdfUrl && (
+                  <a 
+                    href={processedPdfUrl} 
+                    download={`signed_${selectedFile?.name || 'contract'}.pdf`} 
+                    className="w-full bg-emerald-600 text-white py-6 rounded-3xl font-black text-xl text-center block shadow-xl shadow-emerald-100 animate-in zoom-in-95 hover:bg-emerald-700 transition-all"
+                  >
+                    <Download className="w-6 h-6 inline mr-2 mb-1" /> Download Signed PDF
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* History Feed */}
+            {processedHistory.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-4">
+                  <History className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Activity</h3>
+                </div>
+                <div className="grid gap-3">
+                  {processedHistory.map(doc => (
+                    <div key={doc.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{doc.fileName}</p>
+                          <div className="flex gap-4 text-[10px] font-bold text-slate-400">
+                             <span className="flex items-center gap-1 uppercase tracking-tight"><Building2 className="w-3 h-3" /> {doc.templateName}</span>
+                             <span className="flex items-center gap-1 uppercase tracking-tight"><Clock className="w-3 h-3" /> {new Date(doc.processedAt).toLocaleTimeString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button className="p-2 opacity-0 group-hover:opacity-100 transition-all text-slate-400 hover:text-slate-900 bg-slate-50 rounded-lg">
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab Content: TEMPLATES */}
+        {viewMode === ViewMode.TEMPLATES && (
+          <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search company templates..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all shadow-sm"
+                />
+              </div>
+              <button 
+                onClick={() => { setIsNewTemplate(true); setEditingTemplate({ id: `custom-${Date.now()}`, companyName: '', description: '', employeeSignatures: [], clientHighlights: [], printNameZones: [], createdAt: Date.now() }); setEditorPage(1); }}
+                className="w-full md:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
+              >
+                <Plus className="w-5 h-5" /> Create New Layout
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredTemplates.map(template => (
+                <div key={template.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group flex flex-col justify-between h-48">
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                       <h4 className="text-lg font-black text-slate-900 tracking-tight">{template.companyName}</h4>
+                       {INITIAL_TEMPLATES.some(t => t.id === template.id) && (
+                         <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full tracking-tighter">Official Preset</span>
+                       )}
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{template.description || "Custom Layout Configuration"}</p>
+                    
+                    <div className="mt-4 flex gap-4">
+                      <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
+                        <PenTool className="w-3 h-3" /> {template.employeeSignatures.length} Sigs
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
+                        <MousePointer2 className="w-3 h-3" /> {template.clientHighlights.length} HL
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
+                        <Type className="w-3 h-3" /> {template.printNameZones.length} Print
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-50">
+                    <button 
+                      onClick={() => duplicateTemplate(template)}
+                      className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                      title="Duplicate"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => { setEditingTemplate({...template}); setEditorPage(template.employeeSignatures[0]?.page || template.clientHighlights[0]?.page || 1); }}
+                      className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                      title="Edit Layout"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => deleteTemplate(template.id)}
+                      className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filteredTemplates.length === 0 && (
+                <div className="col-span-full py-20 text-center space-y-4">
+                  <div className="w-16 h-16 bg-slate-100 text-slate-300 rounded-3xl flex items-center justify-center mx-auto">
+                    <Search className="w-8 h-8" />
+                  </div>
+                  <p className="font-black text-slate-400">No templates matching "{searchTerm}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Visual Editor Modal */}
         {editingTemplate && (
@@ -510,21 +703,21 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-4">
                    <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center"><Layout className="w-6 h-6" /></div>
                    <div>
-                      <h2 className="text-xl font-black text-slate-900">Layout Editor</h2>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                        Configuring: {editingTemplate.companyName || 'New Template'}
+                      <h2 className="text-xl font-black text-slate-900 tracking-tight">Layout Editor</h2>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Company: {editingTemplate.companyName || 'New'}</span>
                         {INITIAL_TEMPLATES.some(t => t.id === editingTemplate.id) && (
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded ml-2">Built-in Preset</span>
+                          <span className="text-[9px] bg-indigo-50 text-indigo-600 font-black px-1.5 py-0.5 rounded tracking-tighter uppercase">Preset</span>
                         )}
-                      </p>
+                      </div>
                    </div>
                 </div>
-                <div className="flex gap-4">
-                  <button onClick={resetTemplateToDefault} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-indigo-600 transition-colors px-4 py-2 bg-slate-50 rounded-xl" title="Reset this template to its original preset values">
-                    <RotateCcw className="w-4 h-4" /> Reset to Default
+                <div className="flex items-center gap-4">
+                  <button onClick={resetTemplateToDefault} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-indigo-600 transition-colors px-4 py-2.5 bg-slate-50 rounded-xl" title="Reset to official preset values">
+                    <RotateCcw className="w-4 h-4" /> Reset
                   </button>
-                  <button onClick={saveEditedTemplate} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black shadow-lg hover:bg-black transition-all">Save Changes</button>
-                  <button onClick={() => setEditingTemplate(null)} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600"><X className="w-6 h-6" /></button>
+                  <button onClick={saveEditedTemplate} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-black transition-all active:scale-95">Save Changes</button>
+                  <button onClick={() => { setEditingTemplate(null); setIsNewTemplate(false); }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-600 transition-all"><X className="w-6 h-6" /></button>
                 </div>
               </div>
               
@@ -534,13 +727,18 @@ const App: React.FC = () => {
                 <div className="flex-1 overflow-auto p-12 flex flex-col items-center relative">
                   
                   {/* Page Navigation */}
-                  <div className="sticky top-0 bg-white shadow-xl px-8 py-4 rounded-3xl mb-8 z-30 border border-slate-200 flex flex-col md:flex-row items-center gap-8">
-                    
-                    <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                  <div className="sticky top-0 bg-white shadow-xl px-8 py-4 rounded-[2rem] mb-8 z-30 border border-slate-200 flex flex-col md:flex-row items-center gap-8">
+                    <div className="flex items-center gap-4 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                       <button onClick={() => setEditorPage(p => Math.max(1, p - 1))} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all"><ChevronLeft className="w-6 h-6"/></button>
                       <div className="flex items-center gap-2 px-4 border-x border-slate-200">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">PAGE</span>
-                        <input type="number" min="1" value={editorPage} onChange={(e) => setEditorPage(parseInt(e.target.value) || 1)} className="w-12 text-center bg-transparent font-black text-indigo-600 focus:outline-none" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">PAGE</span>
+                        <input 
+                          type="number" 
+                          min="1" 
+                          value={editorPage} 
+                          onChange={(e) => setEditorPage(parseInt(e.target.value) || 1)} 
+                          className="w-10 text-center bg-transparent font-black text-indigo-600 focus:outline-none" 
+                        />
                       </div>
                       <button onClick={() => setEditorPage(p => p + 1)} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all"><ChevronRight className="w-6 h-6"/></button>
                     </div>
@@ -550,12 +748,10 @@ const App: React.FC = () => {
                       <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> Name</div>
                       <div className="flex items-center gap-2"><div className="w-3 h-3 bg-amber-500 rounded-sm"></div> Highlight</div>
                     </div>
-
-                    <div className="text-slate-400 text-[10px] font-medium border-l border-slate-200 pl-6 hidden md:block italic lowercase">markers filtered by page {editorPage}</div>
                   </div>
 
                   {/* A4 Canvas */}
-                  <div className="bg-white shadow-2xl relative flex-shrink-0" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }}>
+                  <div className="bg-white shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] relative flex-shrink-0" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }}>
                     <div className="absolute inset-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 1.5px)', backgroundSize: '30px 30px' }}></div>
                     
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02]">
@@ -640,87 +836,119 @@ const App: React.FC = () => {
                       </div>
                     )})}
                   </div>
-                  
-                  <div className="mt-12 mb-20 text-slate-400 text-[10px] font-black uppercase tracking-widest text-center border-t border-slate-200 pt-8 w-full max-w-sm">
-                    Design Area: Page {editorPage} Only
-                  </div>
                 </div>
                 
                 {/* Sidebar Controls */}
-                <div className="w-full lg:w-[500px] bg-white border-l border-slate-200 p-8 overflow-y-auto space-y-12 shadow-2xl relative">
+                <div className="w-full lg:w-[450px] bg-white border-l border-slate-200 p-8 overflow-y-auto space-y-12 shadow-2xl relative">
                   
                   <div className="space-y-6">
                     <div className="flex items-center gap-3">
                        <Building2 className="w-5 h-5 text-slate-900" />
-                       <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Company Information</h3>
+                       <h3 className="font-black text-slate-900 uppercase text-[11px] tracking-widest">Company Info</h3>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branding Title</label>
-                      <input type="text" value={editingTemplate.companyName} onChange={(e) => setEditingTemplate({...editingTemplate, companyName: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl font-black focus:ring-4 focus:ring-indigo-500/10 border-0 text-lg" placeholder="Company Name" />
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase px-1">Branding Name</label>
+                        <input 
+                          type="text" 
+                          value={editingTemplate.companyName} 
+                          onChange={(e) => setEditingTemplate({...editingTemplate, companyName: e.target.value})} 
+                          className="w-full p-4 bg-slate-50 rounded-2xl font-black focus:ring-4 focus:ring-indigo-500/10 border-0 text-lg transition-all" 
+                          placeholder="e.g. GB" 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase px-1">Description</label>
+                        <input 
+                          type="text" 
+                          value={editingTemplate.description} 
+                          onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})} 
+                          className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-0 text-sm" 
+                          placeholder="Short label for this layout" 
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Sections for Sig, Name, HL */}
-                  <div className="space-y-6">
+                  {/* Signatures List */}
+                  <div className="space-y-6 pt-6 border-t border-slate-50">
                     <div className="flex justify-between items-center text-indigo-600">
-                      <h3 className="font-black uppercase text-xs tracking-widest">Signatures</h3>
-                      <button onClick={() => addZone('sig')} className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-indigo-100">+ Add to P.{editorPage}</button>
-                    </div>
-                    {editingTemplate.employeeSignatures.map((pos, idx) => (
-                      <div key={idx} className={`p-6 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-indigo-100 bg-indigo-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40 grayscale'}`}>
-                        <div className="flex justify-between items-start mb-4">
-                           <span className="bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded">Sig #{idx+1} (P.{pos.page})</span>
-                           <button onClick={() => removeZone('sig', idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('sig', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('sig', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('sig', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <PenTool className="w-4 h-4" />
+                        <h3 className="font-black uppercase text-[11px] tracking-widest">Signatures</h3>
                       </div>
-                    ))}
+                      <button onClick={() => addZone('sig')} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-indigo-100">+ Page {editorPage}</button>
+                    </div>
+                    <div className="space-y-4">
+                      {editingTemplate.employeeSignatures.map((pos, idx) => (
+                        <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-indigo-100 bg-indigo-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
+                          <div className="flex justify-between items-start mb-4">
+                             <span className="bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">SIG #{idx+1}</span>
+                             <button onClick={() => removeZone('sig', idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('sig', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('sig', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('sig', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="space-y-6">
+                  {/* Print Zones List */}
+                  <div className="space-y-6 pt-6 border-t border-slate-50">
                     <div className="flex justify-between items-center text-emerald-600">
-                      <h3 className="font-black uppercase text-xs tracking-widest">Names</h3>
-                      <button onClick={() => addZone('printName')} className="bg-emerald-600 text-white px-5 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-100">+ Add to P.{editorPage}</button>
-                    </div>
-                    {editingTemplate.printNameZones.map((pos, idx) => (
-                      <div key={idx} className={`p-6 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
-                        <div className="flex justify-between items-start mb-4">
-                           <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded">Name #{idx+1} (P.{pos.page})</span>
-                           <button onClick={() => removeZone('printName', idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('printName', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('printName', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('printName', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Size</span><input type="number" value={pos.fontSize} onChange={(e) => updateZone('printName', idx, { fontSize: parseInt(e.target.value) || 12 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Type className="w-4 h-4" />
+                        <h3 className="font-black uppercase text-[11px] tracking-widest">Name Areas</h3>
                       </div>
-                    ))}
+                      <button onClick={() => addZone('printName')} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-100">+ Page {editorPage}</button>
+                    </div>
+                    <div className="space-y-4">
+                      {editingTemplate.printNameZones.map((pos, idx) => (
+                        <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
+                          <div className="flex justify-between items-start mb-4">
+                             <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">NAME #{idx+1}</span>
+                             <button onClick={() => removeZone('printName', idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('printName', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('printName', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('printName', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Font</span><input type="number" value={pos.fontSize} onChange={(e) => updateZone('printName', idx, { fontSize: parseInt(e.target.value) || 12 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="space-y-6">
+                  {/* Highlights List */}
+                  <div className="space-y-6 pt-6 border-t border-slate-50 pb-20">
                     <div className="flex justify-between items-center text-amber-500">
-                      <h3 className="font-black uppercase text-xs tracking-widest">Highlights</h3>
-                      <button onClick={() => addZone('highlight')} className="bg-amber-500 text-white px-5 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-amber-100">+ Add to P.{editorPage}</button>
-                    </div>
-                    {editingTemplate.clientHighlights.map((pos, idx) => (
-                      <div key={idx} className={`p-6 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-amber-100 bg-amber-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
-                        <div className="flex justify-between items-start mb-4">
-                           <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded">HL #{idx+1} (P.{pos.page})</span>
-                           <button onClick={() => removeZone('highlight', idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('highlight', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('highlight', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                           <div><span className="text-[9px] font-black text-slate-400 uppercase">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('highlight', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-lg border text-xs font-black" /></div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <MousePointer2 className="w-4 h-4" />
+                        <h3 className="font-black uppercase text-[11px] tracking-widest">Client Sign Here</h3>
                       </div>
-                    ))}
+                      <button onClick={() => addZone('highlight')} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-amber-100">+ Page {editorPage}</button>
+                    </div>
+                    <div className="space-y-4">
+                      {editingTemplate.clientHighlights.map((pos, idx) => (
+                        <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-amber-100 bg-amber-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
+                          <div className="flex justify-between items-start mb-4">
+                             <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">HL #{idx+1}</span>
+                             <button onClick={() => removeZone('highlight', idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('highlight', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('highlight', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('highlight', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+
                 </div>
               </div>
             </div>
