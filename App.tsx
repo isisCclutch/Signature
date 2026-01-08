@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
@@ -73,8 +72,8 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
       { x: 520, y: 670, width: 50, height: 20, page: 15 },
       { x: 85, y: 410, width: 120, height: 40, page: 17 },
       { x: 85, y: 462, width: 120, height: 40, page: 17 },
-      { x: 35, y: 480, width: 50, height: 40, page: 16 }, // Updated Hil #7
-      { x: 120, y: 480, width: 50, height: 40, page: 16 } // Updated Hil #8
+      { x: 35, y: 480, width: 50, height: 40, page: 16 },
+      { x: 120, y: 480, width: 50, height: 40, page: 16 }
     ],
     createdAt: Date.now()
   },
@@ -161,7 +160,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
       { x: 35, y: 80, width: 150, height: 30, page: 6 },
       { x: 35, y: 60, width: 150, height: 30, page: 6 }
     ],
-    printNameZones: [{ x: 350, y: 190, width: 120, height: 40, page: 5, fontSize: 15 }], // Updated: Added Name Area
+    printNameZones: [{ x: 350, y: 190, width: 120, height: 40, page: 5, fontSize: 15 }],
     createdAt: Date.now()
   },
   {
@@ -236,7 +235,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
     employeeSignatures: [{ x: 90, y: 50, width: 120, height: 40, page: 6 }],
     clientHighlights: [
       { x: 324, y: 290, width: 120, height: 40, page: 6 },
-      { x: 200, y: 290, width: 120, height: 40, page: 6 },
+      { x: 114, y: 290, width: 120, height: 40, page: 6 }, // Updated TD HL #2
       { x: 200, y: 330, width: 120, height: 40, page: 10 },
       { x: 420, y: 330, width: 120, height: 40, page: 10 }
     ],
@@ -750,7 +749,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* A4 Canvas */}
+                  {/* A4 Canvas Preview with Draggable Zones and Visual Deletion */}
                   <div className="bg-white shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] relative flex-shrink-0" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }}>
                     <div className="absolute inset-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 1.5px)', backgroundSize: '30px 30px' }}></div>
                     
@@ -780,6 +779,13 @@ const App: React.FC = () => {
                         <div className="absolute -top-8 left-0 bg-indigo-600 text-white text-[9px] px-3 py-1 rounded-full font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
                           X:{pos.x} Y:{pos.y}
                         </div>
+                        <button 
+                          onMouseDown={(e) => e.stopPropagation()} 
+                          onClick={() => removeZone('sig', idx)} 
+                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 hover:scale-110 active:scale-90"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                         <PenTool className="w-4 h-4 text-indigo-600 opacity-50" />
                       </div>
                     )})}
@@ -806,6 +812,13 @@ const App: React.FC = () => {
                         <div className="absolute -top-8 left-0 bg-emerald-600 text-white text-[9px] px-3 py-1 rounded-full font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
                           X:{pos.x} Y:{pos.y}
                         </div>
+                        <button 
+                          onMouseDown={(e) => e.stopPropagation()} 
+                          onClick={() => removeZone('printName', idx)} 
+                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 hover:scale-110 active:scale-90"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                         <Type className="w-3 h-3 text-emerald-600 opacity-50" />
                       </div>
                     )})}
@@ -832,6 +845,13 @@ const App: React.FC = () => {
                         <div className="absolute -top-8 left-0 bg-amber-600 text-white text-[9px] px-3 py-1 rounded-full font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
                           X:{pos.x} Y:{pos.y}
                         </div>
+                        <button 
+                          onMouseDown={(e) => e.stopPropagation()} 
+                          onClick={() => removeZone('highlight', idx)} 
+                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 hover:scale-110 active:scale-90"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                         <span className="text-[10px] font-black text-amber-900/40 uppercase">HL</span>
                       </div>
                     )})}
@@ -870,7 +890,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Signatures List */}
+                  {/* Signatures List with Delete Capability */}
                   <div className="space-y-6 pt-6 border-t border-slate-50">
                     <div className="flex justify-between items-center text-indigo-600">
                       <div className="flex items-center gap-2">
@@ -884,19 +904,25 @@ const App: React.FC = () => {
                         <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-indigo-100 bg-indigo-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
                           <div className="flex justify-between items-start mb-4">
                              <span className="bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">SIG #{idx+1}</span>
-                             <button onClick={() => removeZone('sig', idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                             <button onClick={() => removeZone('sig', idx)} className="text-slate-300 hover:text-red-600 bg-slate-50 p-1.5 rounded-lg transition-colors" title="Delete signature marker"><Trash2 className="w-4 h-4"/></button>
                           </div>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 gap-3 mb-3">
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('sig', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('sig', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('sig', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div className="grid grid-cols-2 gap-2">
+                               <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('sig', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                               <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('sig', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Width</span><input type="number" value={pos.width} onChange={(e) => updateZone('sig', idx, { width: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Height</span><input type="number" value={pos.height} onChange={(e) => updateZone('sig', idx, { height: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Print Zones List */}
+                  {/* Print Zones List with Delete Capability */}
                   <div className="space-y-6 pt-6 border-t border-slate-50">
                     <div className="flex justify-between items-center text-emerald-600">
                       <div className="flex items-center gap-2">
@@ -910,12 +936,16 @@ const App: React.FC = () => {
                         <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
                           <div className="flex justify-between items-start mb-4">
                              <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">NAME #{idx+1}</span>
-                             <button onClick={() => removeZone('printName', idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                             <button onClick={() => removeZone('printName', idx)} className="text-slate-300 hover:text-red-600 bg-slate-50 p-1.5 rounded-lg transition-colors" title="Delete name marker"><Trash2 className="w-4 h-4"/></button>
                           </div>
-                          <div className="grid grid-cols-4 gap-2">
+                          <div className="grid grid-cols-3 gap-2 mb-3">
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('printName', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('printName', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('printName', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">W</span><input type="number" value={pos.width} onChange={(e) => updateZone('printName', idx, { width: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">H</span><input type="number" value={pos.height} onChange={(e) => updateZone('printName', idx, { height: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Font</span><input type="number" value={pos.fontSize} onChange={(e) => updateZone('printName', idx, { fontSize: parseInt(e.target.value) || 12 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                           </div>
                         </div>
@@ -923,7 +953,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Highlights List */}
+                  {/* Highlights List with Delete Capability */}
                   <div className="space-y-6 pt-6 border-t border-slate-50 pb-20">
                     <div className="flex justify-between items-center text-amber-500">
                       <div className="flex items-center gap-2">
@@ -937,12 +967,16 @@ const App: React.FC = () => {
                         <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-amber-100 bg-amber-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
                           <div className="flex justify-between items-start mb-4">
                              <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">HL #{idx+1}</span>
-                             <button onClick={() => removeZone('highlight', idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                             <button onClick={() => removeZone('highlight', idx)} className="text-slate-300 hover:text-red-600 bg-slate-50 p-1.5 rounded-lg transition-colors" title="Delete highlight marker"><Trash2 className="w-4 h-4"/></button>
                           </div>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-3 gap-3 mb-3">
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('highlight', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('highlight', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                              <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('highlight', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Width</span><input type="number" value={pos.width} onChange={(e) => updateZone('highlight', idx, { width: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Height</span><input type="number" value={pos.height} onChange={(e) => updateZone('highlight', idx, { height: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
                           </div>
                         </div>
                       ))}
