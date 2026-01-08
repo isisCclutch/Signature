@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   FileText, 
   Settings, 
@@ -39,7 +40,6 @@ const A4_WIDTH = 595;
 const A4_HEIGHT = 842;
 const PREVIEW_SCALE = 0.5;
 
-// Sorted Alphabetically by Company Name
 const INITIAL_TEMPLATES: ContractTemplate[] = [
   {
     id: 'autocapital-preset',
@@ -58,7 +58,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
   {
     id: 'bnc-preset',
     companyName: 'BNC',
-    description: 'BNC Standard Layout',
+    description: 'BNC Standard Layout (Official)',
     employeeSignatures: [
       { x: 60, y: 590, width: 120, height: 40, page: 13 },
       { x: 83, y: 270, width: 120, height: 40, page: 14 },
@@ -111,7 +111,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
   {
     id: 'eden-park-preset',
     companyName: 'Eden Park',
-    description: 'Eden Park Standard Layout',
+    description: 'Eden Park Standard Layout (Official)',
     employeeSignatures: [
       { x: 65, y: 360, width: 120, height: 40, page: 9 },
       { x: 65, y: 100, width: 120, height: 40, page: 9 }
@@ -160,7 +160,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
       { x: 35, y: 80, width: 150, height: 30, page: 6 },
       { x: 35, y: 60, width: 150, height: 30, page: 6 }
     ],
-    printNameZones: [{ x: 350, y: 190, width: 120, height: 40, page: 5, fontSize: 15 }],
+    printNameZones: [{ x: 320, y: 190, width: 120, height: 40, page: 5, fontSize: 15 }],
     createdAt: Date.now()
   },
   {
@@ -235,7 +235,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
     employeeSignatures: [{ x: 90, y: 50, width: 120, height: 40, page: 6 }],
     clientHighlights: [
       { x: 324, y: 290, width: 120, height: 40, page: 6 },
-      { x: 114, y: 290, width: 120, height: 40, page: 6 }, // Updated TD HL #2
+      { x: 114, y: 290, width: 120, height: 40, page: 6 },
       { x: 200, y: 330, width: 120, height: 40, page: 10 },
       { x: 420, y: 330, width: 120, height: 40, page: 10 }
     ],
@@ -250,10 +250,15 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('contract_templates');
     if (saved) {
       const parsed = JSON.parse(saved);
-      const existingIds = new Set(parsed.map((t: any) => t.id));
-      const missingInitial = INITIAL_TEMPLATES.filter(t => !existingIds.has(t.id));
-      return [...parsed, ...missingInitial].sort((a,b) => a.companyName.localeCompare(b.companyName));
+      // Ensure official presets are present even if they were manually removed in an older version, 
+      // but keep custom user templates.
+      const userCustom = parsed.filter((t: any) => !t.id.endsWith('-preset'));
+      const existingPresetIds = new Set(parsed.filter((t: any) => t.id.endsWith('-preset')).map((t: any) => t.id));
+      const missingPresets = INITIAL_TEMPLATES.filter(t => !existingPresetIds.has(t.id));
+      
+      return [...parsed, ...missingPresets].sort((a,b) => a.companyName.localeCompare(b.companyName));
     }
+    localStorage.setItem('contract_templates', JSON.stringify(INITIAL_TEMPLATES));
     return [...INITIAL_TEMPLATES].sort((a,b) => a.companyName.localeCompare(b.companyName));
   });
   
@@ -278,6 +283,7 @@ const App: React.FC = () => {
   const [editorPage, setEditorPage] = useState<number>(1);
   const [isNewTemplate, setIsNewTemplate] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedZone, setSelectedZone] = useState<{ type: 'sig' | 'highlight' | 'printName', index: number } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('contract_templates', JSON.stringify(templates));
@@ -286,6 +292,41 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('processed_history', JSON.stringify(processedHistory));
   }, [processedHistory]);
+
+  const removeZone = useCallback((type: 'sig' | 'highlight' | 'printName', index: number) => {
+    setEditingTemplate(prev => {
+      if (!prev) return null;
+      const next = { ...prev };
+      if (type === 'sig') {
+        next.employeeSignatures = next.employeeSignatures.filter((_, i) => i !== index);
+      } else if (type === 'highlight') {
+        next.clientHighlights = next.clientHighlights.filter((_, i) => i !== index);
+      } else {
+        next.printNameZones = next.printNameZones.filter((_, i) => i !== index);
+      }
+      return next;
+    });
+
+    setSelectedZone(prev => {
+      if (prev?.type === type && prev?.index === index) return null;
+      if (prev?.type === type && prev?.index > index) return { ...prev, index: prev.index - 1 };
+      return prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedZone) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          removeZone(selectedZone.type, selectedZone.index);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedZone, removeZone]);
 
   const filteredTemplates = useMemo(() => {
     return templates.filter(t => 
@@ -343,6 +384,7 @@ const App: React.FC = () => {
       if (confirm(`Reset ${editingTemplate.companyName} to official PDF coordinates? Your manual changes will be lost.`)) {
         setEditingTemplate({ ...original });
         setEditorPage(original.employeeSignatures[0]?.page || original.clientHighlights[0]?.page || 1);
+        setSelectedZone(null);
       }
     } else {
       alert("This is a custom template, no default exists.");
@@ -366,6 +408,7 @@ const App: React.FC = () => {
     setTemplates(newTemplates.sort((a,b) => a.companyName.localeCompare(b.companyName)));
     setEditingTemplate(null);
     setIsNewTemplate(false);
+    setSelectedZone(null);
   };
 
   const duplicateTemplate = (template: ContractTemplate) => {
@@ -390,62 +433,49 @@ const App: React.FC = () => {
 
   const addZone = (type: 'sig' | 'highlight' | 'printName') => {
     if (!editingTemplate) return;
-    if (type === 'sig') {
-      setEditingTemplate({
-        ...editingTemplate,
-        employeeSignatures: [...editingTemplate.employeeSignatures, { x: 50, y: 750, width: 120, height: 40, page: editorPage }]
-      });
-    } else if (type === 'highlight') {
-      setEditingTemplate({
-        ...editingTemplate,
-        clientHighlights: [...editingTemplate.clientHighlights, { x: 50, y: 700, width: 120, height: 40, page: editorPage }]
-      });
-    } else {
-      setEditingTemplate({
-        ...editingTemplate,
-        printNameZones: [...editingTemplate.printNameZones, { x: 50, y: 650, width: 120, height: 40, page: editorPage, fontSize: 15 }]
-      });
-    }
-  };
-
-  const updateZone = (type: 'sig' | 'highlight' | 'printName', index: number, updates: Partial<TextZone>) => {
-    if (!editingTemplate) return;
     setEditingTemplate(prev => {
-      if (!prev) return null;
-      if (type === 'sig') {
-        const list = [...prev.employeeSignatures];
-        list[index] = { ...list[index], ...updates };
-        return { ...prev, employeeSignatures: list };
-      } else if (type === 'highlight') {
-        const list = [...prev.clientHighlights];
-        list[index] = { ...list[index], ...updates };
-        return { ...prev, clientHighlights: list };
-      } else {
-        const list = [...prev.printNameZones];
-        list[index] = { ...list[index], ...updates };
-        return { ...prev, printNameZones: list };
-      }
+        if (!prev) return null;
+        const next = { ...prev };
+        if (type === 'sig') {
+          next.employeeSignatures = [...next.employeeSignatures, { x: 50, y: 750, width: 120, height: 40, page: editorPage }];
+          setSelectedZone({ type: 'sig', index: next.employeeSignatures.length - 1 });
+        } else if (type === 'highlight') {
+          next.clientHighlights = [...next.clientHighlights, { x: 50, y: 700, width: 120, height: 40, page: editorPage }];
+          setSelectedZone({ type: 'highlight', index: next.clientHighlights.length - 1 });
+        } else {
+          next.printNameZones = [...next.printNameZones, { x: 50, y: 650, width: 120, height: 40, page: editorPage, fontSize: 15 }];
+          setSelectedZone({ type: 'printName', index: next.printNameZones.length - 1 });
+        }
+        return next;
     });
   };
 
-  const removeZone = (type: 'sig' | 'highlight' | 'printName', index: number) => {
-    if (!editingTemplate) return;
-    if (confirm("Remove this marker?")) {
+  const updateZone = (type: 'sig' | 'highlight' | 'printName', index: number, updates: Partial<TextZone>) => {
+    setEditingTemplate(prev => {
+      if (!prev) return null;
+      const next = { ...prev };
       if (type === 'sig') {
-        setEditingTemplate({ ...editingTemplate, employeeSignatures: editingTemplate.employeeSignatures.filter((_, i) => i !== index) });
+        const list = [...next.employeeSignatures];
+        list[index] = { ...list[index], ...updates };
+        next.employeeSignatures = list;
       } else if (type === 'highlight') {
-        setEditingTemplate({ ...editingTemplate, clientHighlights: editingTemplate.clientHighlights.filter((_, i) => i !== index) });
+        const list = [...next.clientHighlights];
+        list[index] = { ...list[index], ...updates };
+        next.clientHighlights = list;
       } else {
-        setEditingTemplate({ ...editingTemplate, printNameZones: editingTemplate.printNameZones.filter((_, i) => i !== index) });
+        const list = [...next.printNameZones];
+        list[index] = { ...list[index], ...updates };
+        next.printNameZones = list;
       }
-    }
+      return next;
+    });
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col py-12 px-4 items-center overflow-x-hidden">
       <div className="max-w-4xl w-full space-y-8 animate-in fade-in duration-500">
         
-        {/* Navigation Tabs */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -472,7 +502,6 @@ const App: React.FC = () => {
         {/* Tab Content: PROCESS */}
         {viewMode === ViewMode.PROCESS && (
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-            {/* Identity Card */}
             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
@@ -483,7 +512,7 @@ const App: React.FC = () => {
                     type="text" 
                     value={printName} 
                     onChange={(e) => setPrintName(e.target.value)} 
-                    placeholder="Enter full name for contract print areas..."
+                    placeholder="Enter full name..."
                     className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all"
                   />
                 </div>
@@ -495,7 +524,7 @@ const App: React.FC = () => {
                     {employeeSignature ? (
                       <div className="relative h-full w-full flex items-center justify-center p-4 bg-white">
                         <img src={employeeSignature} className="max-h-full max-w-full object-contain" />
-                        <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div className="absolute inset-0 bg-indigo-600/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                           <span className="text-[10px] font-black text-indigo-600 bg-white px-3 py-1 rounded-full shadow-lg">Change File</span>
                         </div>
                       </div>
@@ -511,7 +540,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Process Card */}
             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -525,16 +553,6 @@ const App: React.FC = () => {
                     {templates.map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
                   </select>
                 </div>
-                <div className="flex flex-col justify-end pb-1 px-1">
-                   {selectedTemplate && (
-                     <button 
-                        onClick={() => { const t = templates.find(x => x.id === selectedTemplate); if(t) { setEditingTemplate({...t}); setEditorPage(t.employeeSignatures[0]?.page || t.clientHighlights[0]?.page || 1); } }} 
-                        className="text-indigo-600 font-black text-xs hover:underline flex items-center gap-2"
-                      >
-                       <Edit3 className="w-4 h-4" /> Quick Edit Selected Template
-                     </button>
-                   )}
-                </div>
               </div>
 
               <div className="space-y-4">
@@ -542,7 +560,6 @@ const App: React.FC = () => {
                 <label htmlFor="main-upload" className={`border-2 border-dashed rounded-3xl p-10 text-center cursor-pointer block transition-all ${selectedFile ? 'border-emerald-400 bg-emerald-50/30 text-emerald-700' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50'}`}>
                   <FileText className={`w-12 h-12 mx-auto mb-3 ${selectedFile ? 'text-emerald-500' : 'text-slate-300'}`} />
                   <p className="font-black text-lg">{selectedFile ? selectedFile.name : "Select Contract PDF"}</p>
-                  <p className="text-xs font-bold text-slate-400 uppercase mt-1">Supports standard PDF formats</p>
                 </label>
               </div>
 
@@ -552,60 +569,16 @@ const App: React.FC = () => {
                   onClick={handleProcess} 
                   className="w-full bg-slate-900 text-white py-6 rounded-3xl font-black text-xl hover:bg-black disabled:bg-slate-100 disabled:text-slate-400 transition-all flex items-center justify-center gap-4 shadow-xl shadow-slate-200"
                 >
-                  {isProcessing ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    <>
-                      <PenTool className="w-6 h-6" /> Sign & Generate
-                    </>
-                  )}
+                  {isProcessing ? 'Processing...' : 'Sign & Generate'}
                 </button>
 
                 {processedPdfUrl && (
-                  <a 
-                    href={processedPdfUrl} 
-                    download={`signed_${selectedFile?.name || 'contract'}.pdf`} 
-                    className="w-full bg-emerald-600 text-white py-6 rounded-3xl font-black text-xl text-center block shadow-xl shadow-emerald-100 animate-in zoom-in-95 hover:bg-emerald-700 transition-all"
-                  >
-                    <Download className="w-6 h-6 inline mr-2 mb-1" /> Download Signed PDF
+                  <a href={processedPdfUrl} download={`signed_${selectedFile?.name || 'contract'}.pdf`} className="w-full bg-emerald-600 text-white py-6 rounded-3xl font-black text-xl text-center block shadow-xl shadow-emerald-100 animate-in zoom-in-95 hover:bg-emerald-700 transition-all">
+                    Download Signed PDF
                   </a>
                 )}
               </div>
             </div>
-
-            {/* History Feed */}
-            {processedHistory.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 px-4">
-                  <History className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Activity</h3>
-                </div>
-                <div className="grid gap-3">
-                  {processedHistory.map(doc => (
-                    <div key={doc.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                          <CheckCircle2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{doc.fileName}</p>
-                          <div className="flex gap-4 text-[10px] font-bold text-slate-400">
-                             <span className="flex items-center gap-1 uppercase tracking-tight"><Building2 className="w-3 h-3" /> {doc.templateName}</span>
-                             <span className="flex items-center gap-1 uppercase tracking-tight"><Clock className="w-3 h-3" /> {new Date(doc.processedAt).toLocaleTimeString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <button className="p-2 opacity-0 group-hover:opacity-100 transition-all text-slate-400 hover:text-slate-900 bg-slate-50 rounded-lg">
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -617,78 +590,40 @@ const App: React.FC = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
                   type="text" 
-                  placeholder="Search company templates..."
+                  placeholder="Search templates..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl font-bold focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all shadow-sm"
                 />
               </div>
               <button 
-                onClick={() => { setIsNewTemplate(true); setEditingTemplate({ id: `custom-${Date.now()}`, companyName: '', description: '', employeeSignatures: [], clientHighlights: [], printNameZones: [], createdAt: Date.now() }); setEditorPage(1); }}
-                className="w-full md:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
+                onClick={() => { setIsNewTemplate(true); setEditingTemplate({ id: `custom-${Date.now()}`, companyName: '', description: '', employeeSignatures: [], clientHighlights: [], printNameZones: [], createdAt: Date.now() }); setEditorPage(1); setSelectedZone(null); }}
+                className="w-full md:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg hover:bg-indigo-700 transition-all active:scale-95"
               >
-                <Plus className="w-5 h-5" /> Create New Layout
+                <Plus className="w-5 h-5" /> Create Layout
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredTemplates.map(template => (
-                <div key={template.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group flex flex-col justify-between h-48">
+                <div key={template.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:border-indigo-200 transition-all group flex flex-col justify-between h-48">
                   <div>
                     <div className="flex justify-between items-start mb-2">
                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{template.companyName}</h4>
                        {INITIAL_TEMPLATES.some(t => t.id === template.id) && (
-                         <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full tracking-tighter">Official Preset</span>
+                         <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">Official Preset</span>
                        )}
                     </div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{template.description || "Custom Layout Configuration"}</p>
-                    
-                    <div className="mt-4 flex gap-4">
-                      <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
-                        <PenTool className="w-3 h-3" /> {template.employeeSignatures.length} Sigs
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
-                        <MousePointer2 className="w-3 h-3" /> {template.clientHighlights.length} HL
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500">
-                        <Type className="w-3 h-3" /> {template.printNameZones.length} Print
-                      </div>
-                    </div>
+                    <p className="text-xs font-bold text-slate-400 uppercase">{template.description || "Layout Configuration"}</p>
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-50">
-                    <button 
-                      onClick={() => duplicateTemplate(template)}
-                      className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-                      title="Duplicate"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => { setEditingTemplate({...template}); setEditorPage(template.employeeSignatures[0]?.page || template.clientHighlights[0]?.page || 1); }}
-                      className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                      title="Edit Layout"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => deleteTemplate(template.id)}
-                      className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => duplicateTemplate(template)} className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl"><Copy className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditingTemplate({...template}); setEditorPage(template.employeeSignatures[0]?.page || template.clientHighlights[0]?.page || 1); setSelectedZone(null); }} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl"><Edit3 className="w-4 h-4" /></button>
+                    <button onClick={() => deleteTemplate(template.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}
-              {filteredTemplates.length === 0 && (
-                <div className="col-span-full py-20 text-center space-y-4">
-                  <div className="w-16 h-16 bg-slate-100 text-slate-300 rounded-3xl flex items-center justify-center mx-auto">
-                    <Search className="w-8 h-8" />
-                  </div>
-                  <p className="font-black text-slate-400">No templates matching "{searchTerm}"</p>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -696,293 +631,184 @@ const App: React.FC = () => {
         {/* Visual Editor Modal */}
         {editingTemplate && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-[95%] h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95">
-              
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+            <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-[95%] h-[92vh] flex flex-col overflow-hidden">
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
                 <div className="flex items-center gap-4">
                    <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center"><Layout className="w-6 h-6" /></div>
-                   <div>
-                      <h2 className="text-xl font-black text-slate-900 tracking-tight">Layout Editor</h2>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Company: {editingTemplate.companyName || 'New'}</span>
-                        {INITIAL_TEMPLATES.some(t => t.id === editingTemplate.id) && (
-                          <span className="text-[9px] bg-indigo-50 text-indigo-600 font-black px-1.5 py-0.5 rounded tracking-tighter uppercase">Preset</span>
-                        )}
-                      </div>
-                   </div>
+                   <h2 className="text-xl font-black text-slate-900">Layout Editor: {editingTemplate.companyName || 'New'}</h2>
                 </div>
                 <div className="flex items-center gap-4">
-                  <button onClick={resetTemplateToDefault} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-indigo-600 transition-colors px-4 py-2.5 bg-slate-50 rounded-xl" title="Reset to official preset values">
-                    <RotateCcw className="w-4 h-4" /> Reset
-                  </button>
-                  <button onClick={saveEditedTemplate} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-black transition-all active:scale-95">Save Changes</button>
-                  <button onClick={() => { setEditingTemplate(null); setIsNewTemplate(false); }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-600 transition-all"><X className="w-6 h-6" /></button>
+                  <button onClick={resetTemplateToDefault} className="px-4 py-2.5 bg-slate-50 rounded-xl font-black text-xs text-slate-400 hover:text-indigo-600"><RotateCcw className="w-4 h-4 inline mr-2" /> Reset</button>
+                  <button onClick={saveEditedTemplate} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black">Save Changes</button>
+                  <button onClick={() => { setEditingTemplate(null); setSelectedZone(null); }} className="p-3 bg-slate-100 rounded-2xl"><X className="w-6 h-6" /></button>
                 </div>
               </div>
               
               <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50">
-                
-                {/* Visual Workspace Area */}
-                <div className="flex-1 overflow-auto p-12 flex flex-col items-center relative">
-                  
-                  {/* Page Navigation */}
-                  <div className="sticky top-0 bg-white shadow-xl px-8 py-4 rounded-[2rem] mb-8 z-30 border border-slate-200 flex flex-col md:flex-row items-center gap-8">
-                    <div className="flex items-center gap-4 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-                      <button onClick={() => setEditorPage(p => Math.max(1, p - 1))} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all"><ChevronLeft className="w-6 h-6"/></button>
-                      <div className="flex items-center gap-2 px-4 border-x border-slate-200">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">PAGE</span>
-                        <input 
-                          type="number" 
-                          min="1" 
-                          value={editorPage} 
-                          onChange={(e) => setEditorPage(parseInt(e.target.value) || 1)} 
-                          className="w-10 text-center bg-transparent font-black text-indigo-600 focus:outline-none" 
-                        />
-                      </div>
-                      <button onClick={() => setEditorPage(p => p + 1)} className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-indigo-600 transition-all"><ChevronRight className="w-6 h-6"/></button>
-                    </div>
-
-                    <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-indigo-500 rounded-sm"></div> Sig</div>
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> Name</div>
-                      <div className="flex items-center gap-2"><div className="w-3 h-3 bg-amber-500 rounded-sm"></div> Highlight</div>
+                <div className="flex-1 overflow-auto p-12 flex flex-col items-center relative" onClick={() => setSelectedZone(null)}>
+                  <div className="sticky top-0 bg-white shadow-xl px-8 py-4 rounded-[2rem] mb-8 z-30 border border-slate-200 flex items-center gap-8" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-4 bg-slate-50 p-1.5 rounded-2xl border">
+                      <button onClick={() => setEditorPage(p => Math.max(1, p - 1))} className="p-2"><ChevronLeft className="w-6 h-6"/></button>
+                      <input type="number" min="1" value={editorPage} onChange={(e) => setEditorPage(parseInt(e.target.value) || 1)} className="w-10 text-center bg-transparent font-black text-indigo-600" />
+                      <button onClick={() => setEditorPage(p => p + 1)} className="p-2"><ChevronRight className="w-6 h-6"/></button>
                     </div>
                   </div>
 
-                  {/* A4 Canvas Preview with Draggable Zones and Visual Deletion */}
-                  <div className="bg-white shadow-[0_35px_60px_-15px_rgba(0,0,0,0.1)] relative flex-shrink-0" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }}>
+                  <div className="bg-white shadow-2xl relative flex-shrink-0" style={{ width: A4_WIDTH * PREVIEW_SCALE, height: A4_HEIGHT * PREVIEW_SCALE }} onClick={(e) => e.stopPropagation()}>
                     <div className="absolute inset-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 1.5px)', backgroundSize: '30px 30px' }}></div>
-                    
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02]">
-                       <span className="text-[200px] font-black text-slate-900 select-none">{editorPage}</span>
-                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none"><span className="text-[200px] font-black">{editorPage}</span></div>
 
-                    {/* Draggable Employee Signatures */}
+                    {/* Draggable Markers */}
                     {editingTemplate.employeeSignatures.filter(p => p.page === editorPage).map((pos, _) => {
                       const idx = editingTemplate.employeeSignatures.indexOf(pos);
+                      const isSelected = selectedZone?.type === 'sig' && selectedZone?.index === idx;
                       return (
-                      <div key={`sig-${idx}`} className="absolute border-2 border-indigo-600 bg-indigo-100/60 flex items-center justify-center cursor-move shadow-lg group z-10"
-                        style={{ left: (pos.x || 0) * PREVIEW_SCALE, top: pdfYToCssTop(pos.y || 0, pos.height || 40), width: (pos.width || 120) * PREVIEW_SCALE, height: (pos.height || 40) * PREVIEW_SCALE }}
-                        onMouseDown={(e) => {
-                          const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                          if (!rect) return;
-                          const onMouseMove = (m: MouseEvent) => {
-                            const nx = Math.round((m.clientX - rect.left) / PREVIEW_SCALE);
-                            const ny = Math.round(cssTopToPdfY(m.clientY - rect.top, pos.height));
-                            updateZone('sig', idx, { x: Math.max(0, nx), y: Math.max(0, ny) });
-                          };
-                          const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-                          window.addEventListener('mousemove', onMouseMove);
-                          window.addEventListener('mouseup', onMouseUp);
-                        }}
-                      >
-                        <div className="absolute -top-8 left-0 bg-indigo-600 text-white text-[9px] px-3 py-1 rounded-full font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
-                          X:{pos.x} Y:{pos.y}
-                        </div>
-                        <button 
-                          onMouseDown={(e) => e.stopPropagation()} 
-                          onClick={() => removeZone('sig', idx)} 
-                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 hover:scale-110 active:scale-90"
+                        <div key={`sig-${idx}`} 
+                          className={`absolute border-2 cursor-move shadow-lg group z-10 ${isSelected ? 'border-white border-dashed bg-indigo-600 ring-4 ring-indigo-500/30' : 'border-indigo-600 bg-indigo-100/60'}`}
+                          style={{ left: pos.x * PREVIEW_SCALE, top: pdfYToCssTop(pos.y, pos.height), width: pos.width * PREVIEW_SCALE, height: pos.height * PREVIEW_SCALE }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setSelectedZone({ type: 'sig', index: idx });
+                            const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                            if (!rect) return;
+                            const onMouseMove = (m: MouseEvent) => {
+                              updateZone('sig', idx, { x: Math.max(0, Math.round((m.clientX - rect.left) / PREVIEW_SCALE)), y: Math.max(0, Math.round(cssTopToPdfY(m.clientY - rect.top, pos.height))) });
+                            };
+                            const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+                            window.addEventListener('mousemove', onMouseMove);
+                            window.addEventListener('mouseup', onMouseUp);
+                          }}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <PenTool className="w-4 h-4 text-indigo-600 opacity-50" />
-                      </div>
-                    )})}
+                          <button onClick={(e) => { e.stopPropagation(); removeZone('sig', idx); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><X className="w-3 h-3"/></button>
+                          <PenTool className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-indigo-600 opacity-50'}`} />
+                        </div>
+                      )
+                    })}
 
-                    {/* Draggable Print Name Zones */}
                     {editingTemplate.printNameZones.filter(p => p.page === editorPage).map((pos, _) => {
                       const idx = editingTemplate.printNameZones.indexOf(pos);
+                      const isSelected = selectedZone?.type === 'printName' && selectedZone?.index === idx;
                       return (
-                      <div key={`name-${idx}`} className="absolute border-2 border-emerald-600 bg-emerald-100/60 flex items-center justify-center cursor-move shadow-lg group z-10"
-                        style={{ left: (pos.x || 0) * PREVIEW_SCALE, top: pdfYToCssTop(pos.y || 0, pos.height || 40), width: (pos.width || 120) * PREVIEW_SCALE, height: (pos.height || 40) * PREVIEW_SCALE }}
-                        onMouseDown={(e) => {
-                          const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                          if (!rect) return;
-                          const onMouseMove = (m: MouseEvent) => {
-                            const nx = Math.round((m.clientX - rect.left) / PREVIEW_SCALE);
-                            const ny = Math.round(cssTopToPdfY(m.clientY - rect.top, pos.height));
-                            updateZone('printName', idx, { x: Math.max(0, nx), y: Math.max(0, ny) });
-                          };
-                          const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-                          window.addEventListener('mousemove', onMouseMove);
-                          window.addEventListener('mouseup', onMouseUp);
-                        }}
-                      >
-                        <div className="absolute -top-8 left-0 bg-emerald-600 text-white text-[9px] px-3 py-1 rounded-full font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
-                          X:{pos.x} Y:{pos.y}
-                        </div>
-                        <button 
-                          onMouseDown={(e) => e.stopPropagation()} 
-                          onClick={() => removeZone('printName', idx)} 
-                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 hover:scale-110 active:scale-90"
+                        <div key={`name-${idx}`} 
+                          className={`absolute border-2 cursor-move shadow-lg group z-10 ${isSelected ? 'border-white border-dashed bg-emerald-600 ring-4 ring-emerald-500/30' : 'border-emerald-600 bg-emerald-100/60'}`}
+                          style={{ left: pos.x * PREVIEW_SCALE, top: pdfYToCssTop(pos.y, pos.height), width: pos.width * PREVIEW_SCALE, height: pos.height * PREVIEW_SCALE }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setSelectedZone({ type: 'printName', index: idx });
+                            const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                            if (!rect) return;
+                            const onMouseMove = (m: MouseEvent) => {
+                              updateZone('printName', idx, { x: Math.max(0, Math.round((m.clientX - rect.left) / PREVIEW_SCALE)), y: Math.max(0, Math.round(cssTopToPdfY(m.clientY - rect.top, pos.height))) });
+                            };
+                            const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+                            window.addEventListener('mousemove', onMouseMove);
+                            window.addEventListener('mouseup', onMouseUp);
+                          }}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <Type className="w-3 h-3 text-emerald-600 opacity-50" />
-                      </div>
-                    )})}
+                          <button onClick={(e) => { e.stopPropagation(); removeZone('printName', idx); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><X className="w-3 h-3"/></button>
+                          <Type className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-emerald-600 opacity-50'}`} />
+                        </div>
+                      )
+                    })}
 
-                    {/* Draggable Highlights */}
                     {editingTemplate.clientHighlights.filter(p => p.page === editorPage).map((pos, _) => {
                       const idx = editingTemplate.clientHighlights.indexOf(pos);
+                      const isSelected = selectedZone?.type === 'highlight' && selectedZone?.index === idx;
                       return (
-                      <div key={`high-${idx}`} className="absolute border-2 border-amber-500 bg-amber-200/60 flex items-center justify-center cursor-move shadow-lg group z-10"
-                        style={{ left: (pos.x || 0) * PREVIEW_SCALE, top: pdfYToCssTop(pos.y || 0, pos.height || 40), width: (pos.width || 120) * PREVIEW_SCALE, height: (pos.height || 40) * PREVIEW_SCALE }}
-                        onMouseDown={(e) => {
-                          const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                          if (!rect) return;
-                          const onMouseMove = (m: MouseEvent) => {
-                            const nx = Math.round((m.clientX - rect.left) / PREVIEW_SCALE);
-                            const ny = Math.round(cssTopToPdfY(m.clientY - rect.top, pos.height));
-                            updateZone('highlight', idx, { x: Math.max(0, nx), y: Math.max(0, ny) });
-                          };
-                          const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
-                          window.addEventListener('mousemove', onMouseMove);
-                          window.addEventListener('mouseup', onMouseUp);
-                        }}
-                      >
-                        <div className="absolute -top-8 left-0 bg-amber-600 text-white text-[9px] px-3 py-1 rounded-full font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
-                          X:{pos.x} Y:{pos.y}
-                        </div>
-                        <button 
-                          onMouseDown={(e) => e.stopPropagation()} 
-                          onClick={() => removeZone('highlight', idx)} 
-                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 hover:scale-110 active:scale-90"
+                        <div key={`high-${idx}`} 
+                          className={`absolute border-2 cursor-move shadow-lg group z-10 ${isSelected ? 'border-white border-dashed bg-amber-600 ring-4 ring-amber-500/30' : 'border-amber-500 bg-amber-200/60'}`}
+                          style={{ left: pos.x * PREVIEW_SCALE, top: pdfYToCssTop(pos.y, pos.height), width: pos.width * PREVIEW_SCALE, height: pos.height * PREVIEW_SCALE }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setSelectedZone({ type: 'highlight', index: idx });
+                            const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                            if (!rect) return;
+                            const onMouseMove = (m: MouseEvent) => {
+                              updateZone('highlight', idx, { x: Math.max(0, Math.round((m.clientX - rect.left) / PREVIEW_SCALE)), y: Math.max(0, Math.round(cssTopToPdfY(m.clientY - rect.top, pos.height))) });
+                            };
+                            const onMouseUp = () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
+                            window.addEventListener('mousemove', onMouseMove);
+                            window.addEventListener('mouseup', onMouseUp);
+                          }}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <span className="text-[10px] font-black text-amber-900/40 uppercase">HL</span>
-                      </div>
-                    )})}
+                          <button onClick={(e) => { e.stopPropagation(); removeZone('highlight', idx); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100"><X className="w-3 h-3"/></button>
+                          <span className={`text-[10px] font-black uppercase ${isSelected ? 'text-white' : 'text-amber-900/40'}`}>HL</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
                 
-                {/* Sidebar Controls */}
-                <div className="w-full lg:w-[450px] bg-white border-l border-slate-200 p-8 overflow-y-auto space-y-12 shadow-2xl relative">
-                  
+                <div className="w-full lg:w-[450px] bg-white border-l p-8 overflow-y-auto space-y-12 shadow-2xl">
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3">
-                       <Building2 className="w-5 h-5 text-slate-900" />
-                       <h3 className="font-black text-slate-900 uppercase text-[11px] tracking-widest">Company Info</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase px-1">Branding Name</label>
-                        <input 
-                          type="text" 
-                          value={editingTemplate.companyName} 
-                          onChange={(e) => setEditingTemplate({...editingTemplate, companyName: e.target.value})} 
-                          className="w-full p-4 bg-slate-50 rounded-2xl font-black focus:ring-4 focus:ring-indigo-500/10 border-0 text-lg transition-all" 
-                          placeholder="e.g. GB" 
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase px-1">Description</label>
-                        <input 
-                          type="text" 
-                          value={editingTemplate.description} 
-                          onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})} 
-                          className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-0 text-sm" 
-                          placeholder="Short label for this layout" 
-                        />
-                      </div>
-                    </div>
+                    <h3 className="font-black text-slate-900 uppercase text-[11px] tracking-widest flex items-center gap-2"><Building2 className="w-4 h-4"/> Company Info</h3>
+                    <input type="text" value={editingTemplate.companyName} onChange={(e) => setEditingTemplate({...editingTemplate, companyName: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-black border-0" placeholder="Company Name" />
+                    <input type="text" value={editingTemplate.description} onChange={(e) => setEditingTemplate({...editingTemplate, description: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold border-0 text-sm" placeholder="Description" />
                   </div>
 
-                  {/* Signatures List with Delete Capability */}
-                  <div className="space-y-6 pt-6 border-t border-slate-50">
+                  <div className="space-y-6 pt-6 border-t">
                     <div className="flex justify-between items-center text-indigo-600">
-                      <div className="flex items-center gap-2">
-                        <PenTool className="w-4 h-4" />
-                        <h3 className="font-black uppercase text-[11px] tracking-widest">Signatures</h3>
-                      </div>
-                      <button onClick={() => addZone('sig')} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-indigo-100">+ Page {editorPage}</button>
+                      <h3 className="font-black uppercase text-[11px] tracking-widest flex items-center gap-2"><PenTool className="w-4 h-4"/> Signatures</h3>
+                      <button onClick={() => addZone('sig')} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black">+ Page {editorPage}</button>
                     </div>
                     <div className="space-y-4">
                       {editingTemplate.employeeSignatures.map((pos, idx) => (
-                        <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-indigo-100 bg-indigo-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
-                          <div className="flex justify-between items-start mb-4">
-                             <span className="bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">SIG #{idx+1}</span>
-                             <button onClick={() => removeZone('sig', idx)} className="text-slate-300 hover:text-red-600 bg-slate-50 p-1.5 rounded-lg transition-colors" title="Delete signature marker"><Trash2 className="w-4 h-4"/></button>
+                        <div key={idx} onClick={() => setSelectedZone({ type: 'sig', index: idx })} className={`p-4 rounded-3xl border-2 cursor-pointer ${pos.page === editorPage ? (selectedZone?.type === 'sig' && selectedZone?.index === idx ? 'border-indigo-600 bg-indigo-50' : 'border-indigo-100') : 'opacity-40'}`}>
+                          <div className="flex justify-between items-center mb-2">
+                             <span className="text-[10px] font-black uppercase text-indigo-500">Sig #{idx+1} (Page {pos.page})</span>
+                             <button onClick={(e) => { e.stopPropagation(); removeZone('sig', idx); }} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('sig', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div className="grid grid-cols-2 gap-2">
-                               <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('sig', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                               <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('sig', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Width</span><input type="number" value={pos.width} onChange={(e) => updateZone('sig', idx, { width: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Height</span><input type="number" value={pos.height} onChange={(e) => updateZone('sig', idx, { height: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="number" value={pos.width} onChange={(e) => updateZone('sig', idx, { width: parseInt(e.target.value) || 0 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="W" />
+                            <input type="number" value={pos.height} onChange={(e) => updateZone('sig', idx, { height: parseInt(e.target.value) || 0 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="H" />
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Print Zones List with Delete Capability */}
-                  <div className="space-y-6 pt-6 border-t border-slate-50">
+                  <div className="space-y-6 pt-6 border-t">
                     <div className="flex justify-between items-center text-emerald-600">
-                      <div className="flex items-center gap-2">
-                        <Type className="w-4 h-4" />
-                        <h3 className="font-black uppercase text-[11px] tracking-widest">Name Areas</h3>
-                      </div>
-                      <button onClick={() => addZone('printName')} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-100">+ Page {editorPage}</button>
+                      <h3 className="font-black uppercase text-[11px] tracking-widest flex items-center gap-2"><Type className="w-4 h-4"/> Name Areas</h3>
+                      <button onClick={() => addZone('printName')} className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black">+ Page {editorPage}</button>
                     </div>
                     <div className="space-y-4">
                       {editingTemplate.printNameZones.map((pos, idx) => (
-                        <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
-                          <div className="flex justify-between items-start mb-4">
-                             <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">NAME #{idx+1}</span>
-                             <button onClick={() => removeZone('printName', idx)} className="text-slate-300 hover:text-red-600 bg-slate-50 p-1.5 rounded-lg transition-colors" title="Delete name marker"><Trash2 className="w-4 h-4"/></button>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 mb-3">
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('printName', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('printName', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('printName', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                        <div key={idx} onClick={() => setSelectedZone({ type: 'printName', index: idx })} className={`p-4 rounded-3xl border-2 cursor-pointer ${pos.page === editorPage ? (selectedZone?.type === 'printName' && selectedZone?.index === idx ? 'border-emerald-600 bg-emerald-50' : 'border-emerald-100') : 'opacity-40'}`}>
+                          <div className="flex justify-between items-center mb-2">
+                             <span className="text-[10px] font-black uppercase text-emerald-500">Name #{idx+1} (Page {pos.page})</span>
+                             <button onClick={(e) => { e.stopPropagation(); removeZone('printName', idx); }} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">W</span><input type="number" value={pos.width} onChange={(e) => updateZone('printName', idx, { width: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">H</span><input type="number" value={pos.height} onChange={(e) => updateZone('printName', idx, { height: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Font</span><input type="number" value={pos.fontSize} onChange={(e) => updateZone('printName', idx, { fontSize: parseInt(e.target.value) || 12 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                            <input type="number" value={pos.width} onChange={(e) => updateZone('printName', idx, { width: parseInt(e.target.value) || 0 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="W" />
+                            <input type="number" value={pos.height} onChange={(e) => updateZone('printName', idx, { height: parseInt(e.target.value) || 0 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="H" />
+                            <input type="number" value={pos.fontSize} onChange={(e) => updateZone('printName', idx, { fontSize: parseInt(e.target.value) || 12 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="Size" />
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Highlights List with Delete Capability */}
-                  <div className="space-y-6 pt-6 border-t border-slate-50 pb-20">
+                  <div className="space-y-6 pt-6 border-t pb-20">
                     <div className="flex justify-between items-center text-amber-500">
-                      <div className="flex items-center gap-2">
-                        <MousePointer2 className="w-4 h-4" />
-                        <h3 className="font-black uppercase text-[11px] tracking-widest">Client Sign Here</h3>
-                      </div>
-                      <button onClick={() => addZone('highlight')} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-amber-100">+ Page {editorPage}</button>
+                      <h3 className="font-black uppercase text-[11px] tracking-widest flex items-center gap-2"><MousePointer2 className="w-4 h-4"/> Highlights</h3>
+                      <button onClick={() => addZone('highlight')} className="bg-amber-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-black">+ Page {editorPage}</button>
                     </div>
                     <div className="space-y-4">
                       {editingTemplate.clientHighlights.map((pos, idx) => (
-                        <div key={idx} className={`p-5 rounded-3xl border-2 transition-all ${pos.page === editorPage ? 'border-amber-100 bg-amber-50/20' : 'border-slate-50 bg-slate-50/50 opacity-40'}`}>
-                          <div className="flex justify-between items-start mb-4">
-                             <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded tracking-tighter">HL #{idx+1}</span>
-                             <button onClick={() => removeZone('highlight', idx)} className="text-slate-300 hover:text-red-600 bg-slate-50 p-1.5 rounded-lg transition-colors" title="Delete highlight marker"><Trash2 className="w-4 h-4"/></button>
+                        <div key={idx} onClick={() => setSelectedZone({ type: 'highlight', index: idx })} className={`p-4 rounded-3xl border-2 cursor-pointer ${pos.page === editorPage ? (selectedZone?.type === 'highlight' && selectedZone?.index === idx ? 'border-amber-600 bg-amber-50' : 'border-amber-100') : 'opacity-40'}`}>
+                          <div className="flex justify-between items-center mb-2">
+                             <span className="text-[10px] font-black uppercase text-amber-500">HL #{idx+1} (Page {pos.page})</span>
+                             <button onClick={(e) => { e.stopPropagation(); removeZone('highlight', idx); }} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
                           </div>
-                          <div className="grid grid-cols-3 gap-3 mb-3">
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Page</span><input type="number" value={pos.page} onChange={(e) => updateZone('highlight', idx, { page: parseInt(e.target.value) || 1 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">X</span><input type="number" value={pos.x} onChange={(e) => updateZone('highlight', idx, { x: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Y</span><input type="number" value={pos.y} onChange={(e) => updateZone('highlight', idx, { y: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Width</span><input type="number" value={pos.width} onChange={(e) => updateZone('highlight', idx, { width: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
-                             <div><span className="text-[9px] font-black text-slate-400 uppercase px-1">Height</span><input type="number" value={pos.height} onChange={(e) => updateZone('highlight', idx, { height: parseInt(e.target.value) || 0 })} className="w-full p-2 bg-white rounded-xl border text-xs font-black" /></div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="number" value={pos.width} onChange={(e) => updateZone('highlight', idx, { width: parseInt(e.target.value) || 0 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="W" />
+                            <input type="number" value={pos.height} onChange={(e) => updateZone('highlight', idx, { height: parseInt(e.target.value) || 0 })} className="p-2 bg-white rounded-lg border text-xs" placeholder="H" />
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-
                 </div>
               </div>
             </div>
