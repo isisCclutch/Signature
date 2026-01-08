@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "ContractSigner Pro",
+  "version": "1.1.0",
+  "description": "Secure local PDF tool for signing and highlighting.",
+  "browser_action": {
+    "default_title": "Open ContractSigner"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "https://cdn.tailwindcss.com/*",
+    "https://esm.sh/*",
+    "https://unpkg.com/*"
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh https://unpkg.com; object-src 'self'"
+}

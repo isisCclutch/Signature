@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-contractsigner-offline-pro",
+  "name": "contractsigner",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "lucide-react": "^0.562.0"
+    "lucide-react": "0.474.0",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
