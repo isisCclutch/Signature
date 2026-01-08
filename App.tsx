@@ -73,8 +73,8 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
       { x: 520, y: 670, width: 50, height: 20, page: 15 },
       { x: 85, y: 410, width: 120, height: 40, page: 17 },
       { x: 85, y: 462, width: 120, height: 40, page: 17 },
-      { x: 35, y: 300, width: 120, height: 40, page: 16 },
-      { x: 115, y: 300, width: 120, height: 40, page: 16 }
+      { x: 35, y: 480, width: 50, height: 40, page: 16 }, // Updated Hil #7
+      { x: 120, y: 480, width: 50, height: 40, page: 16 } // Updated Hil #8
     ],
     createdAt: Date.now()
   },
@@ -161,7 +161,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
       { x: 35, y: 80, width: 150, height: 30, page: 6 },
       { x: 35, y: 60, width: 150, height: 30, page: 6 }
     ],
-    printNameZones: [],
+    printNameZones: [{ x: 350, y: 190, width: 120, height: 40, page: 5, fontSize: 15 }], // Updated: Added Name Area
     createdAt: Date.now()
   },
   {
